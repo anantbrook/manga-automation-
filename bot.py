@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from scraper import search_manga, get_manga_details
+from app import app, db, Manga, Subscription, Chapter
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -14,8 +15,85 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Commands:\n"
         "/search <query> - Search for manga\n"
         "/manga <id> - Get details for a manga\n"
+        "/subscribe <id> - Get notified of new chapters\n"
+        "/unsubscribe <id> - Stop notifications\n"
+        "/subs - List your subscriptions\n"
     )
     await context.bot.send_message(chat_id=update.effective_chat.id, text=welcome_msg)
+
+async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a manga ID. Example: /subscribe solo-leveling")
+        return
+
+    manga_id = context.args[0]
+    chat_id = str(update.effective_chat.id)
+
+    with app.app_context():
+        # Make sure manga exists in DB or fetch it
+        manga = db.session.get(Manga, manga_id)
+        if not manga:
+            details = get_manga_details(manga_id)
+            if not details:
+                await context.bot.send_message(chat_id=chat_id, text="Manga not found.")
+                return
+            manga = Manga(id=details['id'], title=details['title'], cover_url=details['cover_url'])
+            db.session.add(manga)
+
+            # Add chapters so we know the baseline
+            for chap in details['chapters']:
+                chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                db.session.add(chapter)
+
+            db.session.commit()
+
+        # Check if already subscribed
+        sub = Subscription.query.filter_by(chat_id=chat_id, manga_id=manga_id).first()
+        if sub:
+            await context.bot.send_message(chat_id=chat_id, text=f"You are already subscribed to {manga.title}.")
+            return
+
+        new_sub = Subscription(chat_id=chat_id, manga_id=manga_id)
+        db.session.add(new_sub)
+        db.session.commit()
+
+    await context.bot.send_message(chat_id=chat_id, text=f"✅ Successfully subscribed to updates for '{manga.title}'!")
+
+async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a manga ID. Example: /unsubscribe solo-leveling")
+        return
+
+    manga_id = context.args[0]
+    chat_id = str(update.effective_chat.id)
+
+    with app.app_context():
+        sub = Subscription.query.filter_by(chat_id=chat_id, manga_id=manga_id).first()
+        if not sub:
+            await context.bot.send_message(chat_id=chat_id, text="You are not subscribed to this manga.")
+            return
+
+        db.session.delete(sub)
+        db.session.commit()
+
+    await context.bot.send_message(chat_id=chat_id, text=f"❌ Unsubscribed from '{manga_id}'.")
+
+async def list_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = str(update.effective_chat.id)
+
+    with app.app_context():
+        subs = Subscription.query.filter_by(chat_id=chat_id).all()
+        if not subs:
+            await context.bot.send_message(chat_id=chat_id, text="You don't have any subscriptions.")
+            return
+
+        response = "📋 **Your Subscriptions:**\n\n"
+        for sub in subs:
+            manga = db.session.get(Manga, sub.manga_id)
+            title = manga.title if manga else sub.manga_id
+            response += f"• {title} (`{sub.manga_id}`)\n"
+
+    await context.bot.send_message(chat_id=chat_id, text=response, parse_mode='Markdown')
 
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -66,19 +144,72 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
 
+async def check_updates_loop(app_instance):
+    """Background task to check for new chapters."""
+    if not TELEGRAM_BOT_TOKEN:
+        return
+
+    bot = app_instance.bot
+    while True:
+        try:
+            with app.app_context():
+                # Get all unique subscribed manga IDs
+                subs = Subscription.query.all()
+                unique_manga_ids = list(set([sub.manga_id for sub in subs]))
+
+                for manga_id in unique_manga_ids:
+                    manga_obj = db.session.get(Manga, manga_id)
+                    details = get_manga_details(manga_id)
+                    if not details:
+                        continue
+
+                    # Find new chapters
+                    new_chapters = []
+                    for chap in details['chapters']:
+                        existing = db.session.get(Chapter, chap['id'])
+                        if not existing:
+                            chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                            db.session.add(chapter)
+                            new_chapters.append(chap)
+
+                    if new_chapters:
+                        db.session.commit()
+                        # Notify subscribers
+                        manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
+                        for sub in manga_subs:
+                            msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_obj.title}*\n\n"
+                            for nc in new_chapters:
+                                msg += f"• {nc['title']}\n"
+                            try:
+                                await bot.send_message(chat_id=sub.chat_id, text=msg, parse_mode='Markdown')
+                            except Exception as e:
+                                print(f"Failed to send update to {sub.chat_id}: {e}")
+
+        except Exception as e:
+            print(f"Error in update loop: {e}")
+
+        await asyncio.sleep(60 * 60) # Check every hour
+
 def run_bot():
     if not TELEGRAM_BOT_TOKEN:
         print("TELEGRAM_BOT_TOKEN not set. Telegram bot will not start.")
         return
 
     print("Starting Telegram Bot...")
-    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+    tg_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("search", search))
-    app.add_handler(CommandHandler("manga", manga))
+    tg_app.add_handler(CommandHandler("start", start))
+    tg_app.add_handler(CommandHandler("search", search))
+    tg_app.add_handler(CommandHandler("manga", manga))
+    tg_app.add_handler(CommandHandler("subscribe", subscribe))
+    tg_app.add_handler(CommandHandler("unsubscribe", unsubscribe))
+    tg_app.add_handler(CommandHandler("subs", list_subs))
 
-    app.run_polling()
+    # Start the background update checker
+    loop = asyncio.get_event_loop()
+    loop.create_task(check_updates_loop(tg_app))
+
+    tg_app.run_polling()
 
 if __name__ == '__main__':
     run_bot()

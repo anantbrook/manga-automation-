@@ -3,13 +3,23 @@ import io
 import os
 import zipfile
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, request, send_file, render_template, Response
 from flask_sqlalchemy import SQLAlchemy
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import requests
 from scraper import search_manga, get_manga_details, get_chapter_images
 
 app = Flask(__name__)
+
+# Initialize rate limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///manga.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -30,6 +40,11 @@ class Chapter(db.Model):
     # Order for sorting natively
     number = db.Column(db.Float, default=0)
 
+class Subscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    chat_id = db.Column(db.String(255), nullable=False)
+    manga_id = db.Column(db.String(255), db.ForeignKey('manga.id'), nullable=False)
+
 with app.app_context():
     db.create_all()
 
@@ -38,6 +53,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/api/search')
+@limiter.limit("10 per minute")
 def api_search():
     q = request.args.get('q', '')
     if not q:
@@ -71,12 +87,19 @@ def api_search():
     return jsonify(results)
 
 @app.route('/api/manga/<path:manga_id>')
+@limiter.limit("30 per minute")
 def api_manga_details(manga_id):
     # Try DB first
     manga = db.session.get(Manga, manga_id)
     force_update = request.args.get('force', 'false').lower() == 'true'
 
-    if manga and not force_update and manga.synopsis:
+    # Check if cache is expired (older than 6 hours)
+    cache_expired = False
+    if manga and manga.last_updated:
+        if datetime.utcnow() - manga.last_updated > timedelta(hours=6):
+            cache_expired = True
+
+    if manga and not force_update and manga.synopsis and not cache_expired:
         # Check if chapters are cached
         chapters = Chapter.query.filter_by(manga_id=manga_id).all()
         if chapters:
@@ -128,6 +151,7 @@ def api_manga_details(manga_id):
     return jsonify(details)
 
 @app.route('/api/chapter/<path:manga_id>/<chapter_slug>')
+@limiter.limit("60 per minute")
 def api_chapter_images(manga_id, chapter_slug):
     images = get_chapter_images(manga_id, chapter_slug)
     if not images:
@@ -135,19 +159,31 @@ def api_chapter_images(manga_id, chapter_slug):
     return jsonify({'images': images})
 
 @app.route('/api/proxy-image')
+@limiter.limit("300 per minute")
 def proxy_image():
     url = request.args.get('url')
     if not url:
         return "No url provided", 400
 
     # Security block: SSRF protection
+    # Block internal and private IPs unconditionally
+    import urllib.parse
+    parsed = urllib.parse.urlparse(url)
+    hostname = parsed.hostname or ''
+
+    if (hostname == 'localhost' or
+        hostname.startswith('127.') or
+        hostname.startswith('10.') or
+        hostname.startswith('192.168.') or
+        hostname.startswith('172.') or
+        hostname == '0.0.0.0' or
+        hostname == '::1'):
+        return "Invalid URL", 403
+
     # Ensure the requested URL goes to the expected domains only
-    allowed_domains = ['aquareader.net', 'wp.com', 'manga']
-    if not any(domain in url for domain in allowed_domains):
-        # We also want to allow standard image hosts that the scraper might return.
-        # But to be completely safe against SSRF to internal network:
-        if url.startswith('http://127.') or url.startswith('http://localhost') or url.startswith('http://10.') or url.startswith('http://192.168.') or url.startswith('http://172.'):
-            return "Invalid URL", 403
+    allowed_domains = ['aquareader.net', 'wp.com']
+    if not any(domain in hostname for domain in allowed_domains):
+        return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
@@ -169,33 +205,68 @@ def proxy_image():
     except Exception as e:
         return str(e), 500
 
+import uuid
+
+download_jobs = {}
+
 @app.route('/api/download/<path:manga_id>/<chapter_slug>')
+@limiter.limit("10 per minute")
 def api_download_chapter(manga_id, chapter_slug):
-    images = get_chapter_images(manga_id, chapter_slug)
-    if not images:
-        return "Images not found", 404
+    # For large chapters, memory-based sync download can timeout.
+    # Let's initiate a background job instead.
+    job_id = str(uuid.uuid4())
+    download_jobs[job_id] = {'status': 'pending', 'file': None, 'error': None, 'progress': 0}
 
-    memory_file = io.BytesIO()
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Referer": "https://aquareader.net/"
+    def process_download(job_id, manga_id, chapter_slug):
+        images = get_chapter_images(manga_id, chapter_slug)
+        if not images:
+            download_jobs[job_id] = {'status': 'error', 'error': 'Images not found', 'file': None}
+            return
+
+        memory_file = io.BytesIO()
+        total = len(images)
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            headers = {
+                "User-Agent": "Mozilla/5.0",
+                "Referer": "https://aquareader.net/"
+            }
+            for idx, img_url in enumerate(images):
+                try:
+                    img_data = requests.get(img_url, headers=headers, timeout=10).content
+                    ext = img_url.split('.')[-1].split('?')[0]
+                    if ext not in ['jpg', 'jpeg', 'png', 'webp']:
+                        ext = 'jpg'
+                    filename = f"{idx:03d}.{ext}"
+                    zf.writestr(filename, img_data)
+                    download_jobs[job_id]['progress'] = int(((idx + 1) / total) * 100)
+                except Exception as e:
+                    print(f"Failed to download image {idx}: {e}")
+
+        memory_file.seek(0)
+        download_jobs[job_id] = {
+            'status': 'completed',
+            'file': memory_file,
+            'filename': f"{manga_id}-{chapter_slug}.cbz",
+            'progress': 100
         }
-        for idx, img_url in enumerate(images):
-            try:
-                img_data = requests.get(img_url, headers=headers).content
-                ext = img_url.split('.')[-1].split('?')[0]
-                if ext not in ['jpg', 'jpeg', 'png', 'webp']:
-                    ext = 'jpg'
-                filename = f"{idx:03d}.{ext}"
-                zf.writestr(filename, img_data)
-            except Exception as e:
-                print(f"Failed to download image {idx}: {e}")
 
-    memory_file.seek(0)
-    return send_file(memory_file,
-                     download_name=f"{manga_id}-{chapter_slug}.cbz",
-                     as_attachment=True)
+    threading.Thread(target=process_download, args=(job_id, manga_id, chapter_slug)).start()
+    return jsonify({'job_id': job_id})
+
+@app.route('/api/download/status/<job_id>')
+def api_download_status(job_id):
+    job = download_jobs.get(job_id)
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+
+    if job['status'] == 'completed':
+        # Send the file and cleanup job
+        mem_file = job['file']
+        filename = job['filename']
+        del download_jobs[job_id]
+        return send_file(mem_file, download_name=filename, as_attachment=True, mimetype='application/zip')
+
+    return jsonify({'status': job['status'], 'progress': job.get('progress', 0), 'error': job.get('error')})
 
 
 @app.route('/admin')
