@@ -144,51 +144,45 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
 
-async def check_updates_loop(app_instance):
+async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
     """Background task to check for new chapters."""
-    if not TELEGRAM_BOT_TOKEN:
-        return
+    bot = context.bot
+    try:
+        with app.app_context():
+            # Get all unique subscribed manga IDs
+            subs = Subscription.query.all()
+            unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-    bot = app_instance.bot
-    while True:
-        try:
-            with app.app_context():
-                # Get all unique subscribed manga IDs
-                subs = Subscription.query.all()
-                unique_manga_ids = list(set([sub.manga_id for sub in subs]))
+            for manga_id in unique_manga_ids:
+                manga_obj = db.session.get(Manga, manga_id)
+                details = get_manga_details(manga_id)
+                if not details:
+                    continue
 
-                for manga_id in unique_manga_ids:
-                    manga_obj = db.session.get(Manga, manga_id)
-                    details = get_manga_details(manga_id)
-                    if not details:
-                        continue
+                # Find new chapters
+                new_chapters = []
+                for chap in details['chapters']:
+                    existing = db.session.get(Chapter, chap['id'])
+                    if not existing:
+                        chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                        db.session.add(chapter)
+                        new_chapters.append(chap)
 
-                    # Find new chapters
-                    new_chapters = []
-                    for chap in details['chapters']:
-                        existing = db.session.get(Chapter, chap['id'])
-                        if not existing:
-                            chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                            db.session.add(chapter)
-                            new_chapters.append(chap)
+                if new_chapters:
+                    db.session.commit()
+                    # Notify subscribers
+                    manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
+                    for sub in manga_subs:
+                        msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_obj.title}*\n\n"
+                        for nc in new_chapters:
+                            msg += f"• {nc['title']}\n"
+                        try:
+                            await bot.send_message(chat_id=sub.chat_id, text=msg, parse_mode='Markdown')
+                        except Exception as e:
+                            print(f"Failed to send update to {sub.chat_id}: {e}")
 
-                    if new_chapters:
-                        db.session.commit()
-                        # Notify subscribers
-                        manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
-                        for sub in manga_subs:
-                            msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_obj.title}*\n\n"
-                            for nc in new_chapters:
-                                msg += f"• {nc['title']}\n"
-                            try:
-                                await bot.send_message(chat_id=sub.chat_id, text=msg, parse_mode='Markdown')
-                            except Exception as e:
-                                print(f"Failed to send update to {sub.chat_id}: {e}")
-
-        except Exception as e:
-            print(f"Error in update loop: {e}")
-
-        await asyncio.sleep(60 * 60) # Check every hour
+    except Exception as e:
+        print(f"Error in update job: {e}")
 
 def run_bot():
     if not TELEGRAM_BOT_TOKEN:
@@ -205,9 +199,9 @@ def run_bot():
     tg_app.add_handler(CommandHandler("unsubscribe", unsubscribe))
     tg_app.add_handler(CommandHandler("subs", list_subs))
 
-    # Start the background update checker
-    loop = asyncio.get_event_loop()
-    loop.create_task(check_updates_loop(tg_app))
+    # Start the background update checker using JobQueue
+    if tg_app.job_queue:
+        tg_app.job_queue.run_repeating(check_updates_job, interval=3600, first=10) # Run every hour, starting in 10s
 
     tg_app.run_polling()
 
