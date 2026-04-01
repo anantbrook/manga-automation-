@@ -3,11 +3,19 @@ import asyncio
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import time
 from scraper import search_manga, get_manga_details
-from app import app, db, Manga, Subscription, Chapter
+from models import db, Manga, Subscription, Chapter
+from flask import Flask
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+# Create a minimal app context for the bot to interact with the database
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///manga.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_msg = (
@@ -156,6 +164,10 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
                 details = get_manga_details(manga_id)
+
+                # Sleep to respect rate limit
+                time.sleep(2)
+
                 if not details:
                     continue
 

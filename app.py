@@ -166,19 +166,20 @@ def proxy_image():
         return "No url provided", 400
 
     # Security block: SSRF protection
-    # Block internal and private IPs unconditionally
+    # We must resolve the hostname to an IP to prevent DNS rebinding attacks and catch all forms of private IPs
     import urllib.parse
+    import socket
+    import ipaddress
+
     parsed = urllib.parse.urlparse(url)
     hostname = parsed.hostname or ''
 
-    if (hostname == 'localhost' or
-        hostname.startswith('127.') or
-        hostname.startswith('10.') or
-        hostname.startswith('192.168.') or
-        hostname.startswith('172.') or
-        hostname == '0.0.0.0' or
-        hostname == '::1'):
-        return "Invalid URL", 403
+    try:
+        ip = socket.gethostbyname(hostname)
+        if ipaddress.ip_address(ip).is_private:
+            return "Invalid URL: Private IP", 403
+    except Exception:
+        return "Invalid URL: Cannot resolve host", 400
 
     # Ensure the requested URL goes to the expected domains only
     allowed_domains = ['aquareader.net', 'wp.com']
@@ -212,10 +213,17 @@ download_jobs = {}
 @app.route('/api/download/<path:manga_id>/<chapter_slug>')
 @limiter.limit("10 per minute")
 def api_download_chapter(manga_id, chapter_slug):
+    cleanup_stale_jobs()
     # For large chapters, memory-based sync download can timeout.
     # Let's initiate a background job instead.
     job_id = str(uuid.uuid4())
-    download_jobs[job_id] = {'status': 'pending', 'file': None, 'error': None, 'progress': 0}
+    download_jobs[job_id] = {
+        'status': 'pending',
+        'file': None,
+        'error': None,
+        'progress': 0,
+        'created_at': datetime.now(timezone.utc)
+    }
 
     def process_download(job_id, manga_id, chapter_slug):
         images = get_chapter_images(manga_id, chapter_slug)
@@ -268,12 +276,28 @@ def api_download_status(job_id):
 
     return jsonify({'status': job['status'], 'progress': job.get('progress', 0), 'error': job.get('error')})
 
+def cleanup_stale_jobs():
+    """Removes jobs older than 10 minutes to prevent memory leaks."""
+    now = datetime.now(timezone.utc)
+    stale_keys = []
+    for j_id, j_data in download_jobs.items():
+        created_at = j_data.get('created_at')
+        if created_at and (now - created_at) > timedelta(minutes=10):
+            stale_keys.append(j_id)
+    for k in stale_keys:
+        del download_jobs[k]
+
 
 @app.route('/admin')
 def admin_panel():
     # Admin must be authenticated. Since it's a basic app without sessions, let's use simple query param auth.
     admin_token = request.args.get('token')
-    if admin_token != os.environ.get('ADMIN_TOKEN', 'admin123'):
+    try:
+        required_token = os.environ['ADMIN_TOKEN']
+    except KeyError:
+        return "Server misconfigured: ADMIN_TOKEN missing.", 500
+
+    if admin_token != required_token:
         return "Unauthorized", 401
 
     mangas = Manga.query.all()
@@ -313,7 +337,12 @@ from flask import render_template_string
 @app.route('/admin/delete/<path:manga_id>', methods=['POST'])
 def admin_delete(manga_id):
     admin_token = request.args.get('token')
-    if admin_token != os.environ.get('ADMIN_TOKEN', 'admin123'):
+    try:
+        required_token = os.environ['ADMIN_TOKEN']
+    except KeyError:
+        return "Server misconfigured: ADMIN_TOKEN missing.", 500
+
+    if admin_token != required_token:
         return "Unauthorized", 401
 
     # DMCA removal feature
@@ -325,4 +354,5 @@ def admin_delete(manga_id):
     return f"<script>alert('Manga {manga_id} and its chapters removed.'); window.location.href='/admin';</script>"
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, port=5000, host='0.0.0.0')
