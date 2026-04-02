@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import time
-from scraper import search_manga, get_manga_details
+from scrapers import get_scraper
 from models import db, Manga, Subscription, Chapter
 from flask import Flask
 
@@ -13,7 +13,9 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
 # Create a minimal app context for the bot to interact with the database
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///manga.db'
+# Read the same DATABASE_URL as app.py (Postgres via Docker, or sqlite locally)
+db_url = os.environ.get('DATABASE_URL', 'sqlite:///manga.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
@@ -41,7 +43,9 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Make sure manga exists in DB or fetch it
         manga = db.session.get(Manga, manga_id)
         if not manga:
-            details = get_manga_details(manga_id)
+            scraper = get_scraper('mangadex')
+            loop = asyncio.get_event_loop()
+            details = loop.run_until_complete(scraper.get_manga_details(manga_id))
             if not details:
                 await context.bot.send_message(chat_id=chat_id, text="Manga not found.")
                 return
@@ -111,7 +115,9 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🔍 Searching for '{query}'...")
 
-    results = search_manga(query)
+    scraper = get_scraper('mangadex')
+    loop = asyncio.get_event_loop()
+    results = loop.run_until_complete(scraper.search_manga(query))
     if not results:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="No results found.")
         return
@@ -130,7 +136,9 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
     manga_id = context.args[0]
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"📥 Fetching details for '{manga_id}'...")
 
-    details = get_manga_details(manga_id)
+    scraper = get_scraper('mangadex')
+    loop = asyncio.get_event_loop()
+    details = loop.run_until_complete(scraper.get_manga_details(manga_id))
     if not details:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Manga not found or error fetching details.")
         return
@@ -152,6 +160,28 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
 
+async def popular(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    scraper = get_scraper('mangadex')
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="🔥 Fetching popular manga...")
+    loop = asyncio.get_event_loop()
+    results = loop.run_until_complete(scraper.search_manga("leveling")) # Dummy term for now until /popular API is implemented
+
+    if not results:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="No popular results found right now.")
+        return
+
+    response = "🌟 **Trending Now:**\n\n"
+    for r in results[:5]:
+        response += f"• *{r['title']}*\n  ID: `{r['id']}`\n\n"
+
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+
+async def latest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="🆕 Check out the latest chapter releases directly on our website:\n\n🌐 https://your-mangafire-domain.com"
+    )
+
 async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
     """Background task to check for new chapters."""
     bot = context.bot
@@ -161,9 +191,12 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
             subs = Subscription.query.all()
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
+            scraper = get_scraper('mangadex')
+            loop = asyncio.get_event_loop()
+
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
-                details = get_manga_details(manga_id)
+                details = loop.run_until_complete(scraper.get_manga_details(manga_id))
 
                 # Sleep to respect rate limit
                 time.sleep(2)
@@ -210,6 +243,8 @@ def run_bot():
     tg_app.add_handler(CommandHandler("subscribe", subscribe))
     tg_app.add_handler(CommandHandler("unsubscribe", unsubscribe))
     tg_app.add_handler(CommandHandler("subs", list_subs))
+    tg_app.add_handler(CommandHandler("popular", popular))
+    tg_app.add_handler(CommandHandler("latest", latest))
 
     # Start the background update checker using JobQueue
     if tg_app.job_queue:

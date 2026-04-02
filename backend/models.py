@@ -5,10 +5,13 @@ db = SQLAlchemy()
 
 class Manga(db.Model):
     id = db.Column(db.String(255), primary_key=True)
+    source = db.Column(db.String(50), nullable=False, default='aquareader')
     title = db.Column(db.String(255), nullable=False)
     cover_url = db.Column(db.String(512))
     synopsis = db.Column(db.Text)
     last_updated = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Allow composite ID+source if needed, but for now ID is usually unique per source
 
 class Chapter(db.Model):
     id = db.Column(db.String(255), primary_key=True) # Format: manga_id/chapter_slug

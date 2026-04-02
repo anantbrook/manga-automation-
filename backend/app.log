@@ -1,0 +1,18 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.2:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [02/Apr/2026 10:01:15] "GET /api/search?q=solo%20leveling&source=mangadex HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:15] "GET /api/search?q=solo%20leveling&source=mangadex HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:15] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/83ff1ad8-7ec5-4134-a8a1-40f1b37a4cc7/8adc4d87-41c4-4f8b-a800-d0fccf9b10c5.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:15] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e90bdc47-c8b9-4df7-b2c0-17641b645ee1.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:15] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/ade0306c-f4b6-4890-9edb-1ddf04df2039/fe76445d-387f-4ff6-8340-f06403c20dbe.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:15] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/c3ea5ce6-f659-4fe9-95b6-520cec9fcb13/b45d60bf-291d-47de-b77c-38359faf5c1a.png HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:16] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/f2c9a1fa-790d-4582-b141-3fabac41485a/e636b551-0ca5-461b-ad45-9807306ce87a.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:16] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/685383ff-58e1-4739-873e-dfddaa87a7dd/81e730c5-1460-4747-8d05-d4bc528b1469.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:16] "GET /api/proxy-image?url=https://uploads.mangadex.org/covers/d6c1f26b-095a-411e-ae8f-faca5c39538a/72b7bf2f-0d83-4fc7-a948-a733565c4ddc.jpg HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:23] "GET /api/manga/mangadex/ade0306c-f4b6-4890-9edb-1ddf04df2039 HTTP/1.1" 200 -
+127.0.0.1 - - [02/Apr/2026 10:01:24] "GET /api/manga/mangadex/ade0306c-f4b6-4890-9edb-1ddf04df2039 HTTP/1.1" 200 -
