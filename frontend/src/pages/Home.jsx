@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import MangaCard from '../components/MangaCard';
 import AdSense from '../components/AdSense';
@@ -25,6 +26,10 @@ function Home() {
 
   return (
     <div>
+      <Helmet>
+        <title>MangaFire PRO - Read Free Manga Online</title>
+        <meta name="description" content="Read your favorite manga online for free in high quality. The ultimate cyberpunk manga reader." />
+      </Helmet>
       <AdSense slot="Top Header Ad" />
       <h2>Latest Updates</h2>
 

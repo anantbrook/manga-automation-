@@ -9,10 +9,34 @@ manga_bp = Blueprint('manga', __name__)
 
 @manga_bp.route('/popular', methods=['GET'])
 def get_popular():
-    # Since we don't have views yet, fallback to recently updated
-    mangas = Manga.query.order_by(Manga.last_updated.desc()).limit(15).all()
+    mangas = Manga.query.order_by(Manga.views.desc().nullslast(), Manga.last_updated.desc()).limit(15).all()
     results = []
     for m in mangas:
+        cover = f"/api/manga/proxy-image?url={m.cover_url}" if m.cover_url else ""
+        results.append({
+            "id": m.id,
+            "title": m.title,
+            "cover_url": cover,
+            "source": m.source,
+            "views": m.views
+        })
+    return jsonify(results)
+
+@manga_bp.route('/recommendations/<path:manga_id>', methods=['GET'])
+def get_recommendations(manga_id):
+    # Simple similarity based on source or shared words in title for now
+    # In a real massive site, we'd use a vector DB or tags.
+    manga = db.session.get(Manga, manga_id)
+    if not manga:
+        return jsonify([])
+
+    # Let's just find other popular manga from the same source to recommend
+    recs = Manga.query.filter(Manga.id != manga_id, Manga.source == manga.source)\
+        .order_by(Manga.views.desc().nullslast())\
+        .limit(5).all()
+
+    results = []
+    for m in recs:
         cover = f"/api/manga/proxy-image?url={m.cover_url}" if m.cover_url else ""
         results.append({
             "id": m.id,
@@ -27,6 +51,10 @@ def get_manga(manga_id):
     manga = db.session.get(Manga, manga_id)
     if not manga:
         return jsonify({"error": "Manga not found"}), 404
+
+    # Increment view count
+    manga.views = (manga.views or 0) + 1
+    db.session.commit()
 
     chapters = Chapter.query.filter_by(manga_id=manga.id).order_by(Chapter.number.desc()).all()
 

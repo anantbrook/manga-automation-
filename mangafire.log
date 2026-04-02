@@ -37,3 +37,186 @@
 2026-04-02 15:01:20,831 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
 2026-04-02 15:01:20,832 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
 2026-04-02 15:01:20,832 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:41:55,607 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:41:55,608 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:41:55,608 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:41:55,608 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:41:55,608 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:41:55,609 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:41:57,833 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:41:57,833 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:41:57,834 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:41:57,834 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:41:57,834 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:41:57,834 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:43:20,697 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:43:20,697 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:43:20,697 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:43:20,697 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:43:20,698 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:43:20,698 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:43:22,700 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:43:22,701 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:43:22,701 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:43:22,702 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:43:22,702 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:43:22,702 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:43:25,004 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:43:25,004 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:43:25,005 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:43:25,005 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:43:25,005 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:43:25,005 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:44:40,608 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:44:40,609 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:44:40,609 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:44:40,609 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:44:40,609 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:44:40,609 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 16:58:25,117 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 16:58:25,117 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 16:58:25,117 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 16:58:25,117 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 16:58:25,117 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 16:58:25,118 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:01:03,898 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:01:03,899 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:01:03,899 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:01:03,899 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:01:03,899 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:01:03,899 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:01:04,031 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-02 17:01:04,032 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-02 17:01:09,262 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET / HTTP/1.1" 200 -
+2026-04-02 17:01:09,312 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/index-Cd39CfMe.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,315 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/index-DxumzvLP.css HTTP/1.1" 200 -
+2026-04-02 17:01:09,316 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/jsx-runtime-B6qGogwt.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,529 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/AffiliateBanner-BcJd_ELv.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,533 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/Home-CplEsQmA.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,534 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/MangaCard-DrHyJc9D.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,531 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/axios-BJKHgv_q.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,537 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "GET /assets/AdSense-vBnkIxRi.js HTTP/1.1" 200 -
+2026-04-02 17:01:09,922 [ERROR] app: Exception on /api/manga/popular [GET]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py", line 516, in _resolve_name
+    rval = d[token]
+           ~^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/util/_collections.py", line 340, in __missing__
+    self[key] = val = self.creator(key)
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py", line 484, in _access_cls
+    return self.fallback[key]
+           ~~~~~~~~~~~~~^^^^^
+KeyError: 'Subscription'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/api/manga.py", line 12, in get_popular
+    mangas = Manga.query.order_by(Manga.views.desc().nullslast(), Manga.last_updated.desc()).limit(15).all()
+             ^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_sqlalchemy/model.py", line 22, in __get__
+    return cls.query_class(
+           ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 276, in __init__
+    self._set_entities(entities)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/query.py", line 289, in _set_entities
+    coercions.expect(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/sql/coercions.py", line 389, in expect
+    insp._post_inspect
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py", line 1235, in __get__
+    obj.__dict__[self.__name__] = result = self.fget(obj)
+                                           ^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py", line 2733, in _post_inspect
+    self._check_configure()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py", line 2410, in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py", line 4227, in _configure_registries
+    _do_configure_registries(registries, cascade)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py", line 4268, in _do_configure_registries
+    mapper._post_configure_properties()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py", line 2427, in _post_configure_properties
+    prop.init()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/interfaces.py", line 595, in init
+    self.do_init()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/relationships.py", line 1655, in do_init
+    self._setup_entity()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/relationships.py", line 1865, in _setup_entity
+    self._clsregistry_resolve_name(argument)(),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py", line 520, in _resolve_name
+    self._raise_for_name(name, err)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py", line 501, in _raise_for_name
+    raise exc.InvalidRequestError(
+sqlalchemy.exc.InvalidRequestError: When initializing mapper Mapper[Manga(manga)], expression 'Subscription' failed to locate a name ('Subscription'). If this is a class name, consider adding this relationship() to the <class 'app.models.manga.Manga'> class after both dependent classes have been defined.
+2026-04-02 17:01:09,981 [INFO] werkzeug: 127.0.0.1 - - [02/Apr/2026 17:01:09] "[35m[1mGET /api/manga/popular HTTP/1.1[0m" 500 -
+2026-04-02 17:06:38,673 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:06:38,674 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:06:38,674 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:06:38,674 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:06:38,674 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:06:38,674 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:09:23,452 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:09:23,452 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:09:23,452 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:09:23,452 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:09:23,453 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:09:23,453 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:10:42,818 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:10:42,818 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:10:42,818 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:10:42,818 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:10:42,819 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:10:42,819 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:14:24,149 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:14:24,150 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:14:24,150 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:14:24,150 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:14:24,150 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:14:24,150 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:16:36,667 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:16:36,667 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:16:36,667 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:16:36,667 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:16:36,667 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:16:36,667 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:17:57,852 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:17:57,852 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:17:57,852 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:17:57,852 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:17:57,852 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:17:57,852 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:19:21,625 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:19:21,626 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:19:21,627 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:19:21,627 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:19:21,627 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:19:21,627 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:20:46,962 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:20:46,963 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:20:46,963 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:20:46,963 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:20:46,963 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:20:46,964 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-02 17:24:09,276 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-02 17:24:09,276 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-02 17:24:09,277 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-02 17:24:09,277 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-02 17:24:09,277 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-02 17:24:09,277 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments

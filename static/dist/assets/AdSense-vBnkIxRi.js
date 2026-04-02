@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-B6qGogwt.js";var t=e();function n({slot:e}){return(0,t.jsxs)(`div`,{className:`ad-container`,children:[(0,t.jsx)(`p`,{children:`Advertisement`}),(0,t.jsxs)(`small`,{children:[`Slot: `,e]})]})}export{n as t};

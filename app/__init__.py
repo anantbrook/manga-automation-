@@ -40,6 +40,25 @@ def create_app(config_class=Config):
     with app.app_context():
         db.create_all()
 
+    @app.route('/sitemap.xml')
+    def sitemap():
+        from flask import Response
+        from app.models.manga import Manga
+        from urllib.parse import quote
+        from flask import request
+
+        mangas = Manga.query.all()
+        xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+        base_url = request.host_url.rstrip('/')
+
+        xml.append(f'<url><loc>{base_url}/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>')
+
+        for manga in mangas:
+            xml.append(f'<url><loc>{base_url}/manga/{quote(manga.id)}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>')
+
+        xml.append('</urlset>')
+        return Response('\n'.join(xml), mimetype='application/xml')
+
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve(path):

@@ -8,6 +8,7 @@ class Manga(db.Model):
     cover_url = db.Column(db.String(512))
     synopsis = db.Column(db.Text)
     source = db.Column(db.String(100), default='aquareader') # To track origin
+    views = db.Column(db.Integer, default=0) # For Trending/Popular sorting
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
     chapters = db.relationship('Chapter', backref='manga', lazy=True, cascade='all, delete-orphan')

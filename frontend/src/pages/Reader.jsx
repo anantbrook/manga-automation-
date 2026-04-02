@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import axios from 'axios';
 import AdSense from '../components/AdSense';
 import AffiliateBanner from '../components/AffiliateBanner';
@@ -21,6 +22,16 @@ function Reader() {
           setError("Chapter is currently being downloaded by background workers. Please check back in a few minutes.");
         } else {
           setImages(response.data.images);
+
+          // Update Reading History
+          const token = localStorage.getItem('token');
+          if (token) {
+             const config = { headers: { Authorization: `Bearer ${token}` } };
+             axios.post(`${apiUrl}/api/user/history`, {
+               manga_id: mangaId,
+               chapter_id: `${mangaId}/${chapterSlug}`
+             }, config).catch(e => console.log('Failed to update history', e));
+          }
         }
         setLoading(false);
       } catch (err) {
@@ -36,6 +47,10 @@ function Reader() {
 
   return (
     <div className="reader-container">
+      <Helmet>
+        <title>Read {chapterSlug.replace('-', ' ')} - MangaFire PRO</title>
+        <meta name="description" content={`Read ${chapterSlug.replace('-', ' ')} online in high quality.`} />
+      </Helmet>
       <div className="reader-controls">
         <button className="btn" onClick={() => navigate(`/manga/${mangaId}`)}>Back to Manga</button>
         <h3>{chapterSlug.replace('-', ' ')}</h3>
