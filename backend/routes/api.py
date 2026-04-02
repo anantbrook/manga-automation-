@@ -14,19 +14,17 @@ import io
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 @api_bp.route('/search')
-def api_search():
+async def api_search():
     q = request.args.get('q', '')
     source = request.args.get('source', 'mangadex')
     if not q: return jsonify([])
 
     scraper = get_scraper(source)
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    results = loop.run_until_complete(scraper.search_manga(q))
+    results = await scraper.search_manga(q)
     return jsonify(results)
 
 @api_bp.route('/manga/<source>/<path:manga_id>')
-def api_manga_details(source, manga_id):
+async def api_manga_details(source, manga_id):
     manga = db.session.get(Manga, manga_id)
     force_update = request.args.get('force', 'false').lower() == 'true'
 
@@ -51,9 +49,7 @@ def api_manga_details(source, manga_id):
             })
 
     scraper = get_scraper(source)
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    details = loop.run_until_complete(scraper.get_manga_details(manga_id))
+    details = await scraper.get_manga_details(manga_id)
 
     if not details:
         return jsonify({'error': 'Not found'}), 404
@@ -84,7 +80,7 @@ def api_manga_details(source, manga_id):
     return jsonify(details)
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
-def api_chapter_images(source, manga_id, chapter_slug):
+async def api_chapter_images(source, manga_id, chapter_slug):
     # Check if we have it locally downloaded first
     local_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga', source, manga_id, chapter_slug)
     if os.path.exists(local_dir):
@@ -97,9 +93,7 @@ def api_chapter_images(source, manga_id, chapter_slug):
 
     # Otherwise fallback to scraping proxy urls
     scraper = get_scraper(source)
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    images = loop.run_until_complete(scraper.get_chapter_images(manga_id, chapter_slug))
+    images = await scraper.get_chapter_images(manga_id, chapter_slug)
 
     if not images:
         return jsonify({'error': 'Not found'}), 404

@@ -62,10 +62,10 @@ def admin_panel():
     </body>
     </html>
     '''
-    return render_template_string(html, mangas=mangas, chapter_count=chapters)
+    return render_template_string(html, mangas=mangas, chapter_count=chapters, request=request)
 
 @admin_bp.route('/add', methods=['POST'])
-def admin_add():
+async def admin_add():
     if not is_authorized():
         return "Unauthorized", 401
 
@@ -81,9 +81,7 @@ def admin_add():
 
     # 1. Scrape it so it hits the DB
     scraper = get_scraper(source)
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    details = loop.run_until_complete(scraper.get_manga_details(manga_id))
+    details = await scraper.get_manga_details(manga_id)
 
     if not details:
         return "Manga not found on source.", 404

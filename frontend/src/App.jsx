@@ -1,11 +1,11 @@
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Search, Flame, Download, ChevronLeft, ChevronRight, Moon, Sun, ShoppingCart } from 'lucide-react';
 import './App.css';
 
-// Re-use proxy implementation if available
-const PROXY = "http://localhost:5000";
+// Vite handles the proxy in dev. In prod we use relative paths.
+const PROXY = "";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -79,9 +79,9 @@ const AffiliateBanner = () => (
 const Home = () => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const queryParams = new URLSearchParams(window.location.search);
-  const query = queryParams.get('q') || 'solo leveling';
-  const source = queryParams.get('source') || 'mangadex';
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get('q') || 'solo leveling';
+  const source = searchParams.get('source') || 'mangadex';
 
   useEffect(() => {
     const fetchManga = async () => {
@@ -127,11 +127,7 @@ const Home = () => {
 };
 
 const MangaDetails = () => {
-  const { source, id } = window.location.pathname.split('/').slice(-2).reduce((acc, curr, idx) => {
-      if(idx === 0) acc.source = curr;
-      if(idx === 1) acc.id = curr;
-      return acc;
-  }, {});
+  const { source, id } = useParams();
 
   const [manga, setManga] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -141,12 +137,32 @@ const MangaDetails = () => {
       // Create a celery job
       const res = await axios.post(`${PROXY}/api/download/${source}/${mangaId}/${chapterId}`);
       if (res.data.job_id) {
-         alert(`Background Celery download triggered! Job ID: ${res.data.job_id}`);
+         pollDownloadJob(res.data.job_id, source, mangaId, chapterId);
       }
     } catch(err) {
       console.error(err);
       alert('Error triggering download. Make sure Celery worker is running.');
     }
+  };
+
+  const pollDownloadJob = (jobId, source, mangaId, chapterId) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await axios.get(`${PROXY}/api/download/status/${jobId}`);
+        const data = res.data;
+        if (data.status === 'completed') {
+           clearInterval(interval);
+           window.location.href = `${PROXY}/api/download/zip/${source}/${mangaId}/${chapterId}`;
+        } else if (data.status === 'error') {
+           clearInterval(interval);
+           alert("Download failed: " + data.error);
+        }
+      } catch (err) {
+        clearInterval(interval);
+        console.error("Polling error", err);
+      }
+    }, 2000);
+    alert(`Download queued! Background Celery processing started. (Polling ID: ${jobId})`);
   };
 
   useEffect(() => {
@@ -208,12 +224,7 @@ const MangaDetails = () => {
 };
 
 const Reader = () => {
-  const { source, id, chapter } = window.location.pathname.split('/').slice(-3).reduce((acc, curr, idx) => {
-    if(idx === 0) acc.source = curr;
-    if(idx === 1) acc.id = curr;
-    if(idx === 2) acc.chapter = curr;
-    return acc;
-  }, {});
+  const { source, id, chapter } = useParams();
 
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);

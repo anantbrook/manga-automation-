@@ -2,7 +2,7 @@ import os
 from celery import Celery
 import asyncio
 import aiohttp
-from .scrapers import get_scraper
+from scrapers import get_scraper
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
@@ -18,9 +18,13 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
     """
     Downloads all images for a given chapter to static/manga/<source>/<manga_id>/<chapter_slug>/
     """
-    scraper = get_scraper(source)
-    loop = asyncio.get_event_loop()
-    images = loop.run_until_complete(scraper.get_chapter_images(manga_id, chapter_slug))
+    from app import create_app
+    app = create_app()
+    with app.app_context():
+        scraper = get_scraper(source)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        images = loop.run_until_complete(scraper.get_chapter_images(manga_id, chapter_slug))
 
     if not images:
         return {'status': 'error', 'msg': 'No images found'}

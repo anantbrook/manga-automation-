@@ -6,6 +6,7 @@ from .base import MangaScraper
 
 class AquaReaderScraper(MangaScraper):
     def __init__(self):
+        super().__init__()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Referer": "https://aquareader.net/"
@@ -13,15 +14,15 @@ class AquaReaderScraper(MangaScraper):
         self.base_url = "https://aquareader.net"
 
     async def _fetch(self, url, is_json=False):
+        session = await self.get_session()
         # Allow basic retry logic for resilience
         for _ in range(3):
             try:
-                async with aiohttp.ClientSession(headers=self.headers) as session:
-                    async with session.get(url, timeout=10) as response:
-                        response.raise_for_status()
-                        if is_json:
-                            return await response.json()
-                        return await response.text()
+                async with session.get(url, headers=self.headers, timeout=10) as response:
+                    response.raise_for_status()
+                    if is_json:
+                        return await response.json()
+                    return await response.text()
             except Exception as e:
                 print(f"Fetch error {url}: {e}")
                 await asyncio.sleep(2)

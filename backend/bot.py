@@ -44,8 +44,8 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         manga = db.session.get(Manga, manga_id)
         if not manga:
             scraper = get_scraper('mangadex')
-            loop = asyncio.get_event_loop()
-            details = loop.run_until_complete(scraper.get_manga_details(manga_id))
+            # The bot is already running in an asyncio event loop, so we can just await
+            details = await scraper.get_manga_details(manga_id)
             if not details:
                 await context.bot.send_message(chat_id=chat_id, text="Manga not found.")
                 return
@@ -116,8 +116,7 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🔍 Searching for '{query}'...")
 
     scraper = get_scraper('mangadex')
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(scraper.search_manga(query))
+    results = await scraper.search_manga(query)
     if not results:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="No results found.")
         return
@@ -137,8 +136,7 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"📥 Fetching details for '{manga_id}'...")
 
     scraper = get_scraper('mangadex')
-    loop = asyncio.get_event_loop()
-    details = loop.run_until_complete(scraper.get_manga_details(manga_id))
+    details = await scraper.get_manga_details(manga_id)
     if not details:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="Manga not found or error fetching details.")
         return
@@ -163,8 +161,7 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def popular(update: Update, context: ContextTypes.DEFAULT_TYPE):
     scraper = get_scraper('mangadex')
     await context.bot.send_message(chat_id=update.effective_chat.id, text="🔥 Fetching popular manga...")
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(scraper.search_manga("leveling")) # Dummy term for now until /popular API is implemented
+    results = await scraper.search_manga("leveling") # Dummy term for now until /popular API is implemented
 
     if not results:
         await context.bot.send_message(chat_id=update.effective_chat.id, text="No popular results found right now.")
@@ -192,14 +189,13 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
             scraper = get_scraper('mangadex')
-            loop = asyncio.get_event_loop()
 
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
-                details = loop.run_until_complete(scraper.get_manga_details(manga_id))
+                details = await scraper.get_manga_details(manga_id)
 
-                # Sleep to respect rate limit
-                time.sleep(2)
+                # Sleep to respect rate limit without blocking loop
+                await asyncio.sleep(2)
 
                 if not details:
                     continue

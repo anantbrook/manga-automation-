@@ -4,19 +4,20 @@ from .base import MangaScraper
 
 class MangaDexScraper(MangaScraper):
     def __init__(self):
+        super().__init__()
         self.api_url = "https://api.mangadex.org"
         self.uploads_url = "https://uploads.mangadex.org"
 
     async def _fetch_json(self, url, params=None):
+        session = await self.get_session()
         for _ in range(3):
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, params=params, timeout=10) as response:
-                        if response.status == 429: # Rate limited
-                            await asyncio.sleep(2)
-                            continue
-                        response.raise_for_status()
-                        return await response.json()
+                async with session.get(url, params=params, timeout=10) as response:
+                    if response.status == 429: # Rate limited
+                        await asyncio.sleep(2)
+                        continue
+                    response.raise_for_status()
+                    return await response.json()
             except Exception as e:
                 print(f"MangaDex Error {url}: {e}")
                 await asyncio.sleep(1)
