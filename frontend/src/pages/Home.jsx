@@ -11,8 +11,8 @@ function Home() {
   useEffect(() => {
     const fetchMangas = async () => {
       try {
-        // Since we don't have a /api/manga list endpoint yet, we'll use search with empty query or fetch popular
-        const response = await axios.get('http://localhost:5000/api/search/?q=');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await axios.get(`${apiUrl}/api/manga/popular`);
         setMangas(response.data);
         setLoading(false);
       } catch (error) {

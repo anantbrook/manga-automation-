@@ -25,16 +25,28 @@ class MangaScraper:
             return None
         return random.choice(self.proxies)
 
+    async def get_session(self):
+        if not hasattr(self, '_session') or self._session.closed:
+            timeout = aiohttp.ClientTimeout(total=15)
+            # Increase connection limits and reuse connections
+            connector = aiohttp.TCPConnector(limit=50, keepalive_timeout=60)
+            self._session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+        return self._session
+
+    async def close_session(self):
+        if hasattr(self, '_session') and not self._session.closed:
+            await self._session.close()
+
     async def fetch_html(self, url, retries=3):
         proxy = self.get_proxy()
+        session = await self.get_session()
         for attempt in range(retries):
             try:
-                # Setup timeout
-                timeout = aiohttp.ClientTimeout(total=15)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(url, headers=self.headers, proxy=proxy) as response:
-                        response.raise_for_status()
-                        return await response.text()
+                async with session.get(url, headers=self.headers, proxy=proxy) as response:
+                    response.raise_for_status()
+                    # Add small delay to avoid rate limiting
+                    await asyncio.sleep(0.5)
+                    return await response.text()
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1} failed for {url} via {proxy}: {e}")
                 if attempt == retries - 1:
@@ -45,13 +57,13 @@ class MangaScraper:
 
     async def fetch_json(self, url, params=None, retries=3):
         proxy = self.get_proxy()
+        session = await self.get_session()
         for attempt in range(retries):
             try:
-                timeout = aiohttp.ClientTimeout(total=15)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(url, headers=self.headers, proxy=proxy, params=params) as response:
-                        response.raise_for_status()
-                        return await response.json()
+                async with session.get(url, headers=self.headers, proxy=proxy, params=params) as response:
+                    response.raise_for_status()
+                    await asyncio.sleep(0.5)
+                    return await response.json()
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1} failed for {url} via {proxy}: {e}")
                 if attempt == retries - 1:
@@ -66,16 +78,15 @@ class MangaScraper:
             headers['Referer'] = referer
 
         proxy = self.get_proxy()
+        session = await self.get_session()
         for attempt in range(retries):
             try:
-                timeout = aiohttp.ClientTimeout(total=15)
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get(url, headers=headers, proxy=proxy) as response:
-                        response.raise_for_status()
-                        content = await response.read()
-                        with open(filepath, 'wb') as f:
-                            f.write(content)
-                        return True
+                async with session.get(url, headers=headers, proxy=proxy) as response:
+                    response.raise_for_status()
+                    content = await response.read()
+                    with open(filepath, 'wb') as f:
+                        f.write(content)
+                    return True
             except Exception as e:
                 logger.warning(f"Image download failed for {url}: {e}")
                 if attempt == retries - 1:

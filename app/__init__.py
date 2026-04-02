@@ -8,6 +8,7 @@ from app.admin.routes import admin_bp
 from app.core.celery_app import make_celery
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_migrate import Migrate
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -21,6 +22,7 @@ def create_app(config_class=Config):
     os.makedirs(os.path.join(base_dir, 'static', 'dist'), exist_ok=True)
 
     db.init_app(app)
+    migrate = Migrate(app, db)
 
     # Re-add rate limiting as requested by review
     limiter = Limiter(

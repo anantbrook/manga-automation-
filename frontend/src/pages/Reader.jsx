@@ -11,10 +11,12 @@ function Reader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const fetchChapter = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/chapter/${mangaId}/${chapterSlug}`);
+        const response = await axios.get(`${apiUrl}/api/chapter/${mangaId}/${chapterSlug}`);
         if (response.status === 202) {
           setError("Chapter is currently being downloaded by background workers. Please check back in a few minutes.");
         } else {
@@ -27,7 +29,7 @@ function Reader() {
       }
     };
     fetchChapter();
-  }, [mangaId, chapterSlug]);
+  }, [mangaId, chapterSlug, apiUrl]);
 
   if (loading) return <div>Loading images...</div>;
   if (error) return <div style={{color:'red', textAlign:'center', marginTop:'50px'}}><h2>{error}</h2><button className="btn" onClick={() => navigate(`/manga/${mangaId}`)}>Go Back</button></div>;
@@ -37,7 +39,7 @@ function Reader() {
       <div className="reader-controls">
         <button className="btn" onClick={() => navigate(`/manga/${mangaId}`)}>Back to Manga</button>
         <h3>{chapterSlug.replace('-', ' ')}</h3>
-        <a href={`http://localhost:5000/api/chapter/download/${mangaId}/${chapterSlug}`} className="btn" style={{background: '#333'}}>
+        <a href={`${apiUrl}/api/chapter/download/${mangaId}/${chapterSlug}`} className="btn" style={{background: '#333'}}>
           ⬇️ Download ZIP
         </a>
       </div>
@@ -47,7 +49,7 @@ function Reader() {
       {images.map((imgUrl, index) => (
         <img
           key={index}
-          src={`http://localhost:5000${imgUrl}`}
+          src={`${apiUrl}${imgUrl}`}
           alt={`Page ${index + 1}`}
           className="reader-image"
           loading="lazy"

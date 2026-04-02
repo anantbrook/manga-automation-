@@ -63,16 +63,19 @@ async def async_download_chapter(chapter_id, source, chapter_url):
 
                 # Integration with auto-sharing bot feature
                 try:
-                    from bot import broadcast_new_chapter, run_bot_instance
-                    import asyncio
-                    # Fire off the telegram notification
-                    bot_app = run_bot_instance()
-                    if bot_app:
+                    from telegram import Bot
+                    import os
+                    token = os.getenv('TELEGRAM_BOT_TOKEN')
+                    if token:
+                        bot_instance = Bot(token=token)
+                        from bot import broadcast_new_chapter
+
+                        # Run the broadcast in the event loop safely
                         loop = asyncio.get_event_loop()
                         if loop.is_closed():
                             loop = asyncio.new_event_loop()
                             asyncio.set_event_loop(loop)
-                        loop.run_until_complete(broadcast_new_chapter(bot_app.bot, chapter.manga.title, chapter.manga.id, chapter.title, slug))
+                        loop.run_until_complete(broadcast_new_chapter(bot_instance, chapter.manga.title, chapter.manga.id, chapter.title, slug))
                 except Exception as e:
                     logger.error(f"Failed to broadcast chapter to Telegram: {e}")
 

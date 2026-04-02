@@ -9,10 +9,12 @@ function MangaDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     const fetchManga = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/api/manga/${mangaId}`);
+        const response = await axios.get(`${apiUrl}/api/manga/${mangaId}`);
         setManga(response.data);
         setLoading(false);
       } catch (err) {
@@ -21,7 +23,7 @@ function MangaDetail() {
       }
     };
     fetchManga();
-  }, [mangaId]);
+  }, [mangaId, apiUrl]);
 
   if (loading) return <div>Loading details...</div>;
   if (error) return <div style={{color:'red'}}>{error}</div>;
@@ -59,7 +61,7 @@ function MangaDetail() {
                 }
               </div>
               <div style={{display:'flex', gap:'10px'}}>
-                <a href={`http://localhost:5000/api/chapter/download/${mangaId}/${slug}`} className="btn" style={{background: '#333'}}>
+                <a href={`${apiUrl}/api/chapter/download/${mangaId}/${slug}`} className="btn" style={{background: '#333'}}>
                   ⬇️ Download ZIP
                 </a>
                 <Link to={`/manga/${mangaId}/${slug}`} className="btn">

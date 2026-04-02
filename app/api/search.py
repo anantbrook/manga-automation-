@@ -10,24 +10,22 @@ from app.tasks.scraper_tasks import fetch_and_add_manga_from_url
 search_bp = Blueprint('search', __name__)
 
 @search_bp.route('/', methods=['GET'])
-def search_manga():
+async def search_manga():
     q = request.args.get('q', '')
     if not q:
         return jsonify([])
-
-    # Since multi-source search can be slow, we will search local DB first.
-    # We will trigger a background job to scrape AquaReader for now to match old behavior.
 
     # Check local DB
     mangas = Manga.query.filter(or_(Manga.title.ilike(f'%{q}%'), Manga.id.ilike(f'%{q}%'))).all()
     results = [{"id": m.id, "title": m.title, "cover_url": m.cover_url, "source": m.source} for m in mangas]
 
     # Quick async fetch from Aquareader (original behavior)
-    async def fetch_aquareader_search():
-        from app.scraper.aquareader import AquaReaderScraper
-        from bs4 import BeautifulSoup
-        scraper = AquaReaderScraper()
-        url = f"https://aquareader.net/?s={q}&post_type=wp-manga"
+    from app.scraper.aquareader import AquaReaderScraper
+    from bs4 import BeautifulSoup
+    scraper = AquaReaderScraper()
+    url = f"https://aquareader.net/?s={q}&post_type=wp-manga"
+
+    try:
         html = await scraper.fetch_html(url)
         live_results = []
         if html:
@@ -49,16 +47,10 @@ def search_manga():
                     "cover_url": cover_url,
                     "source": "aquareader"
                 })
-        return live_results
-
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        live_res = loop.run_until_complete(fetch_aquareader_search())
 
         # Merge results, avoiding duplicates by ID
         existing_ids = {m['id'] for m in results}
-        for res in live_res:
+        for res in live_results:
             if res['id'] not in existing_ids:
                 results.append(res)
                 # Background cache it
@@ -66,5 +58,7 @@ def search_manga():
 
     except Exception as e:
         print(f"Error fetching live search: {e}")
+    finally:
+        await scraper.close_session()
 
     return jsonify(results)

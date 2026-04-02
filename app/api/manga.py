@@ -7,6 +7,21 @@ from app.models.chapter import Chapter
 
 manga_bp = Blueprint('manga', __name__)
 
+@manga_bp.route('/popular', methods=['GET'])
+def get_popular():
+    # Since we don't have views yet, fallback to recently updated
+    mangas = Manga.query.order_by(Manga.last_updated.desc()).limit(15).all()
+    results = []
+    for m in mangas:
+        cover = f"/api/manga/proxy-image?url={m.cover_url}" if m.cover_url else ""
+        results.append({
+            "id": m.id,
+            "title": m.title,
+            "cover_url": cover,
+            "source": m.source
+        })
+    return jsonify(results)
+
 @manga_bp.route('/<path:manga_id>', methods=['GET'])
 def get_manga(manga_id):
     manga = db.session.get(Manga, manga_id)

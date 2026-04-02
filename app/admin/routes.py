@@ -50,7 +50,7 @@ def admin_panel():
 
             <div style="background:#222; padding: 20px; margin-bottom: 20px;">
                 <h2>Add Manga Manually (Trigger Auto-Downloader)</h2>
-                <form method="post" action="?token={{ request.args.get('token') }}">
+                <form method="post" action="?token={{ token }}">
                     <input type="text" name="url" placeholder="Paste supported URL (Asura, MangaDex, Manganato, AquaReader)" required>
                     <button type="submit">Add & Download</button>
                 </form>
@@ -69,7 +69,7 @@ def admin_panel():
                     <td>{{ m.source }}</td>
                     <td>{{ m.last_updated }}</td>
                     <td>
-                        <form action="{{ url_for('admin.admin_delete', manga_id=m.id, token=request.args.get('token')) }}" method="post" style="display:inline;">
+                        <form action="{{ url_for('admin.admin_delete', manga_id=m.id, token=token) }}" method="post" style="display:inline;">
                             <button type="submit" style="background:#dc143c;">Delete (DMCA)</button>
                         </form>
                     </td>
@@ -80,7 +80,7 @@ def admin_panel():
     </body>
     </html>
     '''
-    return render_template_string(html, mangas=mangas, chapter_count=chapter_count, msg=msg)
+    return render_template_string(html, mangas=mangas, chapter_count=chapter_count, msg=msg, token=token)
 
 @admin_bp.route('/delete/<path:manga_id>', methods=['POST'])
 def admin_delete(manga_id):
