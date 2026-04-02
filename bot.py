@@ -3,51 +3,118 @@ import asyncio
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from scraper import search_manga, get_manga_details
-from app import app, db, Manga, Subscription, Chapter
+from sqlalchemy import or_
+
+from app import create_app
+from app.models import db
+from app.models.manga import Manga
+from app.models.chapter import Chapter
+from app.models.subscription import Subscription
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+AUTO_SHARE_CHANNELS = [c.strip() for c in os.getenv('AUTO_SHARE_CHANNELS', '').split(',') if c.strip()]
+
+flask_app = create_app()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_msg = (
-        "🔥 Welcome to Manga-FireA Bot! 🔥\n\n"
+        "🔥 Welcome to MangaFire Pro Bot! 🔥\n\n"
         "Commands:\n"
         "/search <query> - Search for manga\n"
         "/manga <id> - Get details for a manga\n"
+        "/latest - Get the latest updated manga\n"
+        "/popular - Get popular manga\n"
         "/subscribe <id> - Get notified of new chapters\n"
         "/unsubscribe <id> - Stop notifications\n"
         "/subs - List your subscriptions\n"
     )
     await context.bot.send_message(chat_id=update.effective_chat.id, text=welcome_msg)
 
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a query. Example: /search solo")
+        return
+
+    query = " ".join(context.args)
+    with flask_app.app_context():
+        mangas = Manga.query.filter(or_(Manga.title.ilike(f'%{query}%'), Manga.id.ilike(f'%{query}%'))).limit(5).all()
+
+        if not mangas:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="No results found in the database.")
+            return
+
+        response = "📚 **Search Results:**\n\n"
+        for m in mangas:
+            response += f"• *{m.title}*\n  ID: `{m.id}`\n\n"
+
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+
+async def latest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with flask_app.app_context():
+        mangas = Manga.query.order_by(Manga.last_updated.desc()).limit(5).all()
+        if not mangas:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="No manga available yet.")
+            return
+
+        response = "🔥 **Latest Updates:**\n\n"
+        for m in mangas:
+            response += f"• *{m.title}*\n  ID: `{m.id}`\n\n"
+
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+
+async def popular(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    with flask_app.app_context():
+        mangas = Manga.query.limit(5).all()
+        if not mangas:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="No manga available yet.")
+            return
+
+        response = "⭐ **Popular Manga:**\n\n"
+        for m in mangas:
+            response += f"• *{m.title}*\n  ID: `{m.id}`\n\n"
+
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+
+async def manga_details(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Provide an ID. Example: /manga solo-leveling")
+        return
+
+    manga_id = context.args[0]
+
+    with flask_app.app_context():
+        manga = db.session.get(Manga, manga_id)
+        if not manga:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Manga not found.")
+            return
+
+        chap_count = Chapter.query.filter_by(manga_id=manga.id).count()
+        synopsis = manga.synopsis[:300] + "..." if manga.synopsis and len(manga.synopsis) > 300 else manga.synopsis
+
+        response = (
+            f"📖 *{manga.title}*\n\n"
+            f"*{synopsis}*\n\n"
+            f"Chapters: {chap_count}\n"
+            f"Source: {manga.source}\n"
+        )
+
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+
 async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a manga ID. Example: /subscribe solo-leveling")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Provide an ID. Example: /subscribe solo-leveling")
         return
 
     manga_id = context.args[0]
     chat_id = str(update.effective_chat.id)
 
-    with app.app_context():
-        # Make sure manga exists in DB or fetch it
+    with flask_app.app_context():
         manga = db.session.get(Manga, manga_id)
         if not manga:
-            details = get_manga_details(manga_id)
-            if not details:
-                await context.bot.send_message(chat_id=chat_id, text="Manga not found.")
-                return
-            manga = Manga(id=details['id'], title=details['title'], cover_url=details['cover_url'])
-            db.session.add(manga)
+            await context.bot.send_message(chat_id=chat_id, text="Manga not found in database.")
+            return
 
-            # Add chapters so we know the baseline
-            for chap in details['chapters']:
-                chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                db.session.add(chapter)
-
-            db.session.commit()
-
-        # Check if already subscribed
         sub = Subscription.query.filter_by(chat_id=chat_id, manga_id=manga_id).first()
         if sub:
             await context.bot.send_message(chat_id=chat_id, text=f"You are already subscribed to {manga.title}.")
@@ -57,20 +124,20 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         db.session.add(new_sub)
         db.session.commit()
 
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ Successfully subscribed to updates for '{manga.title}'!")
+    await context.bot.send_message(chat_id=chat_id, text=f"✅ Subscribed to '{manga.title}'!")
 
 async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a manga ID. Example: /unsubscribe solo-leveling")
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Provide an ID.")
         return
 
     manga_id = context.args[0]
     chat_id = str(update.effective_chat.id)
 
-    with app.app_context():
+    with flask_app.app_context():
         sub = Subscription.query.filter_by(chat_id=chat_id, manga_id=manga_id).first()
         if not sub:
-            await context.bot.send_message(chat_id=chat_id, text="You are not subscribed to this manga.")
+            await context.bot.send_message(chat_id=chat_id, text="You are not subscribed.")
             return
 
         db.session.delete(sub)
@@ -81,10 +148,10 @@ async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def list_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
 
-    with app.app_context():
+    with flask_app.app_context():
         subs = Subscription.query.filter_by(chat_id=chat_id).all()
         if not subs:
-            await context.bot.send_message(chat_id=chat_id, text="You don't have any subscriptions.")
+            await context.bot.send_message(chat_id=chat_id, text="No subscriptions.")
             return
 
         response = "📋 **Your Subscriptions:**\n\n"
@@ -95,115 +162,41 @@ async def list_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(chat_id=chat_id, text=response, parse_mode='Markdown')
 
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a search query. Example: /search solo leveling")
-        return
+async def broadcast_new_chapter(bot, manga_title, manga_id, chapter_title, url_slug):
+    msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_title}*\n{chapter_title}\n\nRead here: http://localhost:5000/manga/{manga_id}/{url_slug}"
 
-    query = " ".join(context.args)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🔍 Searching for '{query}'...")
-
-    results = search_manga(query)
-    if not results:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="No results found.")
-        return
-
-    response = "📚 **Search Results:**\n\n"
-    for r in results[:5]: # Send top 5
-        response += f"• *{r['title']}*\n  ID: `{r['id']}`\n\n"
-
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
-
-async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Please provide a manga ID. Example: /manga solo-leveling")
-        return
-
-    manga_id = context.args[0]
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"📥 Fetching details for '{manga_id}'...")
-
-    details = get_manga_details(manga_id)
-    if not details:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Manga not found or error fetching details.")
-        return
-
-    chap_count = len(details['chapters'])
-    synopsis = details['synopsis'][:300] + "..." if len(details['synopsis']) > 300 else details['synopsis']
-
-    response = (
-        f"📖 *{details['title']}*\n\n"
-        f"*{synopsis}*\n\n"
-        f"Chapters: {chap_count}\n"
-    )
-
-    if details['cover_url']:
+    for channel in AUTO_SHARE_CHANNELS:
         try:
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=details['cover_url'], caption=response, parse_mode='Markdown')
-        except:
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
-    else:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+            await bot.send_message(chat_id=channel, text=msg, parse_mode='Markdown')
+        except Exception as e:
+            print(f"Failed to post to channel {channel}: {e}")
 
-async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
-    """Background task to check for new chapters."""
-    bot = context.bot
-    try:
-        with app.app_context():
-            # Get all unique subscribed manga IDs
-            subs = Subscription.query.all()
-            unique_manga_ids = list(set([sub.manga_id for sub in subs]))
+    with flask_app.app_context():
+        subs = Subscription.query.filter_by(manga_id=manga_id).all()
+        for sub in subs:
+            try:
+                await bot.send_message(chat_id=sub.chat_id, text=msg, parse_mode='Markdown')
+            except:
+                pass
 
-            for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
-                details = get_manga_details(manga_id)
-                if not details:
-                    continue
-
-                # Find new chapters
-                new_chapters = []
-                for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
-                        chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                        db.session.add(chapter)
-                        new_chapters.append(chap)
-
-                if new_chapters:
-                    db.session.commit()
-                    # Notify subscribers
-                    manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
-                    for sub in manga_subs:
-                        msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_obj.title}*\n\n"
-                        for nc in new_chapters:
-                            msg += f"• {nc['title']}\n"
-                        try:
-                            await bot.send_message(chat_id=sub.chat_id, text=msg, parse_mode='Markdown')
-                        except Exception as e:
-                            print(f"Failed to send update to {sub.chat_id}: {e}")
-
-    except Exception as e:
-        print(f"Error in update job: {e}")
-
-def run_bot():
+def run_bot_instance():
     if not TELEGRAM_BOT_TOKEN:
-        print("TELEGRAM_BOT_TOKEN not set. Telegram bot will not start.")
-        return
+        print("TELEGRAM_BOT_TOKEN not set.")
+        return None
 
-    print("Starting Telegram Bot...")
     tg_app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
-
     tg_app.add_handler(CommandHandler("start", start))
     tg_app.add_handler(CommandHandler("search", search))
-    tg_app.add_handler(CommandHandler("manga", manga))
+    tg_app.add_handler(CommandHandler("manga", manga_details))
+    tg_app.add_handler(CommandHandler("latest", latest))
+    tg_app.add_handler(CommandHandler("popular", popular))
     tg_app.add_handler(CommandHandler("subscribe", subscribe))
     tg_app.add_handler(CommandHandler("unsubscribe", unsubscribe))
     tg_app.add_handler(CommandHandler("subs", list_subs))
-
-    # Start the background update checker using JobQueue
-    if tg_app.job_queue:
-        tg_app.job_queue.run_repeating(check_updates_job, interval=3600, first=10) # Run every hour, starting in 10s
-
-    tg_app.run_polling()
+    return tg_app
 
 if __name__ == '__main__':
-    run_bot()
+    bot_app = run_bot_instance()
+    if bot_app:
+        print("Starting Telegram Bot Polling...")
+        bot_app.run_polling()

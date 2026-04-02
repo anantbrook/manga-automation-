@@ -1,22 +1,41 @@
 #!/bin/bash
-echo "=============================================="
-echo "🔥 Starting Manga-FireA Server & Telegram Bot 🔥"
-echo "=============================================="
+echo "🔥 Starting MangaFire PRO 🔥"
 
-echo "[1/3] Checking dependencies..."
-python3 -m pip install -r requirements.txt
+# Ensure dependencies are installed
+# pip install -r requirements.txt
 
-echo "[2/3] Checking environment variables..."
-if [ ! -f ".env" ]; then
-    echo "Creating default .env file..."
-    echo "TELEGRAM_BOT_TOKEN=YOUR_TOKEN_HERE" > .env
-    echo "ADMIN_TOKEN=admin123" >> .env
-    echo "Please edit the .env file with your actual Telegram bot token."
+# Start Redis (if not running)
+if ! pgrep -x "redis-server" > /dev/null
+then
+    echo "Starting Redis server..."
+    redis-server --daemonize yes
 fi
 
-echo "[3/3] Launching servers..."
-echo "The website will be available at http://localhost:5000"
-echo "Press CTRL+C to stop both servers."
-echo "----------------------------------------------"
+# 1. Start Celery Worker
+echo "Starting Celery Worker..."
+celery -A app.core.celery_app.celery_app worker --loglevel=info > celery_worker.log 2>&1 &
+CELERY_PID=$!
 
+# 2. Start Celery Beat (for cron jobs)
+echo "Starting Celery Beat..."
+celery -A app.core.celery_app.celery_app beat --loglevel=info > celery_beat.log 2>&1 &
+BEAT_PID=$!
+
+# 3. Start Telegram Bot
+if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+    echo "⚠️ TELEGRAM_BOT_TOKEN is not set. Bot will not run."
+else
+    echo "Starting Telegram Bot..."
+    python3 bot.py > bot.log 2>&1 &
+    BOT_PID=$!
+fi
+
+# 4. Start Flask App
+echo "Starting Flask Server on http://localhost:5000"
+export FLASK_APP=app:create_app
+export FLASK_ENV=production
+export FLASK_DEBUG=0
 python3 run.py
+
+# Cleanup on exit
+trap "kill $CELERY_PID $BEAT_PID $BOT_PID; exit" SIGINT SIGTERM

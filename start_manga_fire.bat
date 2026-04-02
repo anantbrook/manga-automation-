@@ -1,25 +1,25 @@
 @echo off
-TITLE Manga-FireA Server
-echo ==============================================
-echo 🔥 Starting Manga-FireA Server & Telegram Bot 🔥
-echo ==============================================
+echo 🔥 Starting MangaFire PRO 🔥
 
-echo [1/3] Checking dependencies...
-python -m pip install -r requirements.txt
+echo Starting Redis server...
+:: Assuming redis-server is in PATH for Windows users
+start /b redis-server
 
-echo [2/3] Checking environment variables...
-if not exist ".env" (
-    echo Creating default .env file...
-    echo TELEGRAM_BOT_TOKEN=YOUR_TOKEN_HERE > .env
-    echo ADMIN_TOKEN=admin123 >> .env
-    echo Please edit the .env file with your actual Telegram bot token.
+echo Starting Celery Worker...
+start /b celery -A app.core.celery_app.celery_app worker --loglevel=info --pool=solo
+
+echo Starting Celery Beat...
+start /b celery -A app.core.celery_app.celery_app beat --loglevel=info
+
+if "%TELEGRAM_BOT_TOKEN%"=="" (
+    echo ⚠️ TELEGRAM_BOT_TOKEN is not set. Bot will not run.
+) else (
+    echo Starting Telegram Bot...
+    start /b python bot.py
 )
 
-echo [3/3] Launching servers...
-echo The website will be available at http://localhost:5000
-echo Press CTRL+C to stop both servers.
-echo ----------------------------------------------
-
+echo Starting Flask Server on http://localhost:5000
+set FLASK_APP=app:create_app
+set FLASK_ENV=production
+set FLASK_DEBUG=0
 python run.py
-
-pause

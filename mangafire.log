@@ -1,0 +1,21 @@
+2026-04-01 18:06:14,940 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.2:5000
+2026-04-01 18:06:14,940 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-01 18:06:14,941 [INFO] werkzeug:  * Restarting with stat
+2026-04-01 18:06:15,859 [WARNING] werkzeug:  * Debugger is active!
+2026-04-01 18:06:15,862 [INFO] werkzeug:  * Debugger PIN: 123-396-847
+2026-04-01 18:06:17,632 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:06:17] "GET /api/health HTTP/1.1" 200 -
+2026-04-01 18:21:54,410 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-01 18:21:54,410 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-01 18:21:57,419 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:21:57] "GET /api/health HTTP/1.1" 200 -
+2026-04-01 18:21:57,431 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:21:57] "GET / HTTP/1.1" 200 -
+2026-04-01 18:24:19,843 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-01 18:24:19,843 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-01 18:24:24,066 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:24:24] "GET / HTTP/1.1" 200 -
+2026-04-01 18:24:24,135 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:24:24] "GET /assets/index-DpVoCRhZ.js HTTP/1.1" 200 -
+2026-04-01 18:24:24,136 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:24:24] "GET /assets/index-Bv1GPJZO.css HTTP/1.1" 200 -
+2026-04-01 18:24:24,903 [INFO] werkzeug: 127.0.0.1 - - [01/Apr/2026 18:24:24] "GET /api/search/?q= HTTP/1.1" 200 -
