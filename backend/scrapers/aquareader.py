@@ -15,17 +15,21 @@ class AquaReaderScraper(MangaScraper):
 
     async def _fetch(self, url, is_json=False):
         session = await self.get_session()
-        # Allow basic retry logic for resilience
-        for _ in range(3):
+        # Exponential backoff + Proxy rotation
+        for attempt in range(4):
+            proxy = self.get_proxy()
             try:
-                async with session.get(url, headers=self.headers, timeout=10) as response:
+                async with session.get(url, headers=self.headers, proxy=proxy, timeout=15) as response:
+                    if response.status in [429, 503]:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
                     response.raise_for_status()
                     if is_json:
                         return await response.json()
                     return await response.text()
             except Exception as e:
-                print(f"Fetch error {url}: {e}")
-                await asyncio.sleep(2)
+                print(f"Fetch error {url} (attempt {attempt+1}, proxy: {proxy}): {e}")
+                await asyncio.sleep(2 ** attempt)
         return None
 
     async def search_manga(self, query: str):

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useSearchPa
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Search, Flame, Download, ChevronLeft, ChevronRight, Moon, Sun, ShoppingCart } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 import './App.css';
 
 // Vite handles the proxy in dev. In prod we use relative paths.
@@ -83,6 +84,8 @@ const Home = () => {
   const query = searchParams.get('q') || 'solo leveling';
   const source = searchParams.get('source') || 'mangadex';
 
+  const siteUrl = window.location.origin;
+
   useEffect(() => {
     const fetchManga = async () => {
       setLoading(true);
@@ -99,6 +102,15 @@ const Home = () => {
 
   return (
     <div className="container">
+      <Helmet>
+        <title>{query !== 'solo leveling' ? `Search: ${query} - MangaFire PRO` : 'MangaFire PRO - Read Manga Free'}</title>
+        <meta name="description" content="Read your favorite manga online for free. Cyberpunk dark mode reader. Fast downloads and multi-source scraping." />
+        <meta property="og:title" content="MangaFire PRO - Read Manga Free" />
+        <meta property="og:description" content="Read your favorite manga online for free. Fast downloads and multi-source scraping." />
+        <meta property="og:url" content={siteUrl} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
+
       <h2 className="page-title"><Flame className="inline mb-1 mr-2 text-orange-500"/> Results for "{query}"</h2>
 
       <AdBanner />
@@ -181,12 +193,41 @@ const MangaDetails = () => {
   if (loading) return <div className="container"><div className="loader"></div></div>;
   if (!manga) return <div className="container"><h2>Manga not found.</h2></div>;
 
+  const coverProxy = manga.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(manga.cover_url)}` : 'https://via.placeholder.com/300x450?text=No+Cover';
+  const fullUrl = `${window.location.origin}/manga/${source}/${id}`;
+
+  // JSON-LD Schema Markup
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Book",
+    "name": manga.title,
+    "description": manga.synopsis,
+    "image": coverProxy,
+    "url": fullUrl,
+    "author": {
+      "@type": "Person",
+      "name": "Unknown" // We don't scrape authors yet, but placeholder helps SEO
+    },
+    "bookFormat": "https://schema.org/GraphicNovel"
+  };
+
   return (
     <div className="container">
+      <Helmet>
+        <title>{`${manga.title} - Read Online | MangaFire PRO`}</title>
+        <meta name="description" content={manga.synopsis ? manga.synopsis.substring(0, 155) + '...' : `Read ${manga.title} manga online for free.`} />
+        <meta property="og:title" content={`${manga.title} - MangaFire PRO`} />
+        <meta property="og:description" content={manga.synopsis ? manga.synopsis.substring(0, 155) + '...' : `Read ${manga.title} manga online for free.`} />
+        <meta property="og:image" content={coverProxy} />
+        <meta property="og:url" content={fullUrl} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <script type="application/ld+json">{JSON.stringify(schema)}</script>
+      </Helmet>
+
       <AdBanner />
 
       <div className="manga-header">
-        <img className="main-cover" src={manga.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(manga.cover_url)}` : 'https://via.placeholder.com/300x450?text=No+Cover'} alt={manga.title} />
+        <img className="main-cover" src={coverProxy} alt={manga.title} />
         <div className="manga-info">
           <h1>{manga.title}</h1>
           <div className="meta-tags">
@@ -248,6 +289,11 @@ const Reader = () => {
 
   return (
     <div className="reader-container">
+      <Helmet>
+        <title>{`Reading Chapter ${chapter} - MangaFire PRO`}</title>
+        <meta name="robots" content="noindex, nofollow" /> {/* Prevent crawling individual pages to avoid thin content penalties */}
+      </Helmet>
+
       <div className="reader-nav">
         <button onClick={() => window.history.back()} className="btn-secondary"><ChevronLeft size={18}/> Back</button>
         <div className="reader-controls">

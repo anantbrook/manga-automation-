@@ -13,6 +13,55 @@ celery = Celery(
     backend=CELERY_RESULT_BACKEND
 )
 
+# Configure Celery Beat to auto-scrape new chapters for Subscribed users every hour
+celery.conf.beat_schedule = {
+    'check-updates-every-hour': {
+        'task': 'tasks.check_manga_updates_job',
+        'schedule': 3600.0, # seconds (1 hour)
+    },
+}
+celery.conf.timezone = 'UTC'
+
+@celery.task
+def check_manga_updates_job():
+    """
+    Background job managed by Celery Beat.
+    Checks for updates on all subscribed manga.
+    Since telegram bot is separate, it pushes updates via bot API or simply caches them
+    so the bot can pick them up. (We'll trigger the scrape to refresh DB).
+    """
+    from app import create_app
+    from models import db, Subscription, Manga, Chapter
+    import time
+
+    app = create_app()
+    with app.app_context():
+        subs = Subscription.query.all()
+        unique_manga_ids = list(set([sub.manga_id for sub in subs]))
+
+        scraper = get_scraper('mangadex')
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        for manga_id in unique_manga_ids:
+            manga_obj = db.session.get(Manga, manga_id)
+            if not manga_obj: continue
+
+            # Re-scraping updates the DB directly (as written in the api_manga_details flow)
+            details = loop.run_until_complete(scraper.get_manga_details(manga_id))
+            time.sleep(2)
+
+            if not details: continue
+
+            for chap in details['chapters']:
+                chap_id = chap['id']
+                existing = db.session.get(Chapter, chap_id)
+                if not existing:
+                    chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
+                    db.session.add(chapter)
+
+            db.session.commit()
+
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):
     """

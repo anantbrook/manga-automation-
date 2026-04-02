@@ -10,6 +10,7 @@ class Manga(db.Model):
     cover_url = db.Column(db.String(512))
     synopsis = db.Column(db.Text)
     last_updated = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    view_count = db.Column(db.Integer, default=0)
 
     # Allow composite ID+source if needed, but for now ID is usually unique per source
 
@@ -28,3 +29,22 @@ class Subscription(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     chat_id = db.Column(db.String(255), nullable=False)
     manga_id = db.Column(db.String(255), db.ForeignKey('manga.id'), nullable=False)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+class Bookmark(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    manga_id = db.Column(db.String(255), db.ForeignKey('manga.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+class ReadingHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    manga_id = db.Column(db.String(255), db.ForeignKey('manga.id'), nullable=False)
+    chapter_id = db.Column(db.String(255), nullable=False)
+    last_read = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

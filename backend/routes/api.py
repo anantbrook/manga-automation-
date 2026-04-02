@@ -23,10 +23,35 @@ async def api_search():
     results = await scraper.search_manga(q)
     return jsonify(results)
 
+@api_bp.route('/home')
+def api_home():
+    # Trending based on views
+    trending = Manga.query.order_by(Manga.view_count.desc()).limit(10).all()
+    # Latest updated
+    latest = Manga.query.order_by(Manga.last_updated.desc()).limit(10).all()
+
+    def serialize(m):
+        return {
+            'id': m.id,
+            'title': m.title,
+            'cover_url': m.cover_url,
+            'source': m.source,
+            'views': m.view_count
+        }
+
+    return jsonify({
+        'trending': [serialize(m) for m in trending],
+        'latest': [serialize(m) for m in latest]
+    })
+
 @api_bp.route('/manga/<source>/<path:manga_id>')
 async def api_manga_details(source, manga_id):
     manga = db.session.get(Manga, manga_id)
     force_update = request.args.get('force', 'false').lower() == 'true'
+
+    if manga:
+        manga.view_count = (manga.view_count or 0) + 1
+        db.session.commit()
 
     cache_expired = False
     if manga and manga.last_updated:
@@ -179,3 +204,144 @@ def get_zip_download(source, manga_id, chapter_slug):
 
     memory_file.seek(0)
     return send_file(memory_file, download_name=f"{manga_id}-{chapter_slug}.cbz", as_attachment=True, mimetype='application/zip')
+
+@api_bp.route('/sitemap.xml')
+def sitemap():
+    base_url = request.host_url.rstrip('/')
+    mangas = Manga.query.all()
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+
+    # Add homepage
+    xml += f'  <url>\n    <loc>{base_url}</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n'
+
+    for manga in mangas:
+        loc = f"{base_url}/manga/{manga.source}/{manga.id}"
+        lastmod = manga.last_updated.strftime("%Y-%m-%dT%H:%M:%S+00:00") if manga.last_updated else ""
+        xml += f'  <url>\n    <loc>{loc}</loc>\n'
+        if lastmod:
+            xml += f'    <lastmod>{lastmod}</lastmod>\n'
+        xml += '    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n'
+
+    xml += '</urlset>'
+    return Response(xml, mimetype='application/xml')
+
+@api_bp.route('/robots.txt')
+def robots():
+    base_url = request.host_url.rstrip('/')
+    txt = f"User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /read/\n\nSitemap: {base_url}/api/sitemap.xml"
+    return Response(txt, mimetype='text/plain')
+
+# Auth & User Routes
+from auth import JWT_SECRET, token_required
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from models import User, Bookmark, ReadingHistory
+
+@api_bp.route('/auth/register', methods=['POST'])
+def register():
+    data = request.json
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Missing credentials'}), 400
+
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({'error': 'User already exists'}), 409
+
+    hashed = generate_password_hash(data['password'])
+    new_user = User(username=data['username'], password_hash=hashed)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({'message': 'User created successfully'}), 201
+
+@api_bp.route('/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Missing credentials'}), 400
+
+    user = User.query.filter_by(username=data['username']).first()
+    if not user or not check_password_hash(user.password_hash, data['password']):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    if not JWT_SECRET:
+        return jsonify({'error': 'Server misconfigured. JWT_SECRET missing.'}), 500
+
+    token = jwt.encode({
+        'user_id': user.id,
+        'exp': datetime.now(timezone.utc) + timedelta(days=7)
+    }, JWT_SECRET, algorithm="HS256")
+
+    return jsonify({'token': token, 'username': user.username})
+
+@api_bp.route('/user/bookmarks', methods=['GET', 'POST', 'DELETE'])
+@token_required
+def handle_bookmarks(current_user):
+    if request.method == 'GET':
+        bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
+        result = []
+        for b in bookmarks:
+            manga = db.session.get(Manga, b.manga_id)
+            if manga:
+                result.append({
+                    'manga_id': manga.id,
+                    'title': manga.title,
+                    'cover_url': manga.cover_url,
+                    'source': manga.source
+                })
+        return jsonify(result)
+
+    elif request.method == 'POST':
+        manga_id = request.json.get('manga_id')
+        if not manga_id: return jsonify({'error': 'missing manga_id'}), 400
+
+        if Bookmark.query.filter_by(user_id=current_user.id, manga_id=manga_id).first():
+            return jsonify({'message': 'Already bookmarked'}), 200
+
+        new_bm = Bookmark(user_id=current_user.id, manga_id=manga_id)
+        db.session.add(new_bm)
+        db.session.commit()
+        return jsonify({'message': 'Bookmarked added'}), 201
+
+    elif request.method == 'DELETE':
+        manga_id = request.json.get('manga_id')
+        bm = Bookmark.query.filter_by(user_id=current_user.id, manga_id=manga_id).first()
+        if bm:
+            db.session.delete(bm)
+            db.session.commit()
+        return jsonify({'message': 'Bookmark removed'}), 200
+
+@api_bp.route('/user/history', methods=['GET', 'POST'])
+@token_required
+def handle_history(current_user):
+    if request.method == 'GET':
+        history = ReadingHistory.query.filter_by(user_id=current_user.id).order_by(ReadingHistory.last_read.desc()).limit(20).all()
+        result = []
+        for h in history:
+            manga = db.session.get(Manga, h.manga_id)
+            if manga:
+                result.append({
+                    'manga_id': manga.id,
+                    'title': manga.title,
+                    'source': manga.source,
+                    'chapter_id': h.chapter_id,
+                    'last_read': h.last_read.isoformat()
+                })
+        return jsonify(result)
+
+    elif request.method == 'POST':
+        data = request.json
+        if not data or not data.get('manga_id') or not data.get('chapter_id'):
+            return jsonify({'error': 'Missing fields'}), 400
+
+        history = ReadingHistory.query.filter_by(user_id=current_user.id, manga_id=data['manga_id']).first()
+        if history:
+            history.chapter_id = data['chapter_id']
+            history.last_read = datetime.now(timezone.utc)
+        else:
+            history = ReadingHistory(user_id=current_user.id, manga_id=data['manga_id'], chapter_id=data['chapter_id'])
+            db.session.add(history)
+
+        db.session.commit()
+        return jsonify({'message': 'History updated'}), 200
