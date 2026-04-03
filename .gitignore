@@ -1,0 +1,11 @@
+node_modules/
+static/dist/
+__pycache__/
+instance/
+*/node_modules/*
+static/dist/*
+**/__pycache__/*
+*.db
+*.pyc
+*.log
+migrations/*
