@@ -4,9 +4,10 @@ from app.core.config import Config
 
 celery_app = Celery(
     'mangafire',
-    broker=Config.CELERY_BROKER_URL,
-    backend=Config.CELERY_RESULT_BACKEND
+    broker=Config.broker_url,
+    backend=Config.result_backend
 )
+celery_app.conf.task_always_eager = Config.task_always_eager
 
 # Auto-discover tasks so they are registered when celery starts
 celery_app.autodiscover_tasks(['app.tasks'])

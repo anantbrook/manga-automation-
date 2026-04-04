@@ -706,3 +706,869 @@ FROM manga ORDER BY manga.views DESC NULLS LAST, manga.last_updated DESC
 [parameters: (15, 0)]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 2026-04-03 19:56:55,617 [INFO] werkzeug: 127.0.0.1 - - [03/Apr/2026 19:56:55] "[35m[1mGET /api/manga/popular HTTP/1.1[0m" 500 -
+2026-04-04 08:21:47,880 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:21:47,883 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:21:47,883 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:21:47,883 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:21:47,883 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:21:47,883 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:21:48,120 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:21:48,120 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:21:50,844 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:21:50] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:21:50,861 [ERROR] app: Exception on /admin/ [POST]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/local.py", line 292, in _get_current_object
+    return object.__getattribute__(self, '__thing')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'PromiseProxy' object has no attribute '__thing'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/admin/routes.py", line 25, in admin_panel
+    task = fetch_and_add_manga_from_url.delay(url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/local.py", line 143, in __getattr__
+    return getattr(self._get_current_object(), name)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/local.py", line 294, in _get_current_object
+    return self.__evaluate__()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/local.py", line 324, in __evaluate__
+    thing = Proxy._get_current_object(self)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/local.py", line 105, in _get_current_object
+    return loc(*self.__args, **self.__kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 625, in _task_from_fun
+    task.bind(self)  # connects task to this app
+    ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 374, in bind
+    setattr(cls, attr_name, conf[config_name])
+                            ~~~~^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/utils/collections.py", line 391, in __getitem__
+    return getitem(k)
+           ^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/utils/collections.py", line 249, in __getitem__
+    return mapping[_key]
+           ~~~~~~~^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/collections/__init__.py", line 1131, in __getitem__
+    if key in self.data:
+              ^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/kombu/utils/objects.py", line 40, in __get__
+    return super().__get__(instance, owner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/functools.py", line 998, in __get__
+    val = self.func(instance)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 245, in data
+    return self.callback()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 1152, in _finalize_pending_conf
+    conf = self._conf = self._load_config()
+                        ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 1170, in _load_config
+    settings = detect_settings(
+               ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/utils.py", line 274, in detect_settings
+    raise ImproperlyConfigured(info.mix_error.format(renames='\n'.join(
+celery.exceptions.ImproperlyConfigured:
+
+Cannot mix new and old setting keys, please rename the
+following settings to the new format:
+
+CELERY_RESULT_BACKEND                -> result_backend
+
+
+2026-04-04 08:21:50,892 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:21:50] "[35m[1mPOST /admin/?token=admin123 HTTP/1.1[0m" 500 -
+2026-04-04 08:23:16,311 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:23:16,312 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:23:16,312 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:23:16,312 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:23:16,312 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:23:16,312 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:23:16,441 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:23:16,441 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:23:20,093 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:23:20] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:23:20,260 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (0/20) now.
+2026-04-04 08:23:20,263 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (1/20) in 1.00 second.
+2026-04-04 08:23:21,267 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (2/20) in 1.00 second.
+2026-04-04 08:23:22,271 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (3/20) in 1.00 second.
+2026-04-04 08:23:23,275 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (4/20) in 1.00 second.
+2026-04-04 08:23:24,280 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (5/20) in 1.00 second.
+2026-04-04 08:23:25,283 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (6/20) in 1.00 second.
+2026-04-04 08:23:26,287 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (7/20) in 1.00 second.
+2026-04-04 08:23:27,290 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (8/20) in 1.00 second.
+2026-04-04 08:23:28,302 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (9/20) in 1.00 second.
+2026-04-04 08:23:29,306 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (10/20) in 1.00 second.
+2026-04-04 08:23:30,310 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (11/20) in 1.00 second.
+2026-04-04 08:23:31,314 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (12/20) in 1.00 second.
+2026-04-04 08:23:32,317 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (13/20) in 1.00 second.
+2026-04-04 08:23:33,320 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (14/20) in 1.00 second.
+2026-04-04 08:23:34,324 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (15/20) in 1.00 second.
+2026-04-04 08:23:35,327 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (16/20) in 1.00 second.
+2026-04-04 08:23:36,331 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (17/20) in 1.00 second.
+2026-04-04 08:23:37,336 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (18/20) in 1.00 second.
+2026-04-04 08:23:38,339 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (19/20) in 1.00 second.
+2026-04-04 08:23:39,348 [CRITICAL] celery.backends.asynchronous:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:23:39,348 [ERROR] app: Exception on /admin/ [POST]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 349, in reconnect_on_error
+    yield
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 165, in _consume_from
+    self._pubsub.subscribe(key)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1265, in subscribe
+    ret_val = self.execute_command("SUBSCRIBE", *new_channels.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1023, in execute_command
+    self.connection = self.connection_pool.get_connection()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 352, in reconnect_on_error
+    self._reconnect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 121, in _reconnect
+    self._ensure(self._reconnect_pubsub, ())
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 413, in ensure
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 103, in _reconnect_pubsub
+    metas = self.backend.client.mget(self.subscribed_to)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/commands/core.py", line 2241, in mget
+    return self.execute_command("MGET", *args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 716, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 722, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/admin/routes.py", line 25, in admin_panel
+    task = fetch_and_add_manga_from_url.delay(url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 463, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 627, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 968, in send_task
+    self.backend.on_task_call(P, task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 402, in on_task_call
+    self.result_consumer.consume_from(task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 157, in consume_from
+    return self.start(task_id)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 135, in start
+    self._consume_from(initial_task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 164, in _consume_from
+    with self.reconnect_on_error():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 355, in reconnect_on_error
+    raise RuntimeError(E_RETRY_LIMIT_EXCEEDED) from exc
+RuntimeError:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:23:39,385 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:23:39] "[35m[1mPOST /admin/?token=admin123 HTTP/1.1[0m" 500 -
+2026-04-04 08:25:01,061 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:25:01,062 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:25:01,062 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:25:01,062 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:25:01,062 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:25:01,062 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:25:01,198 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:25:01,199 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:25:04,593 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:25:04] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:25:04,716 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (0/20) now.
+2026-04-04 08:25:04,718 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (1/20) in 1.00 second.
+2026-04-04 08:25:05,721 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (2/20) in 1.00 second.
+2026-04-04 08:25:06,725 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (3/20) in 1.00 second.
+2026-04-04 08:25:07,728 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (4/20) in 1.00 second.
+2026-04-04 08:25:08,731 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (5/20) in 1.00 second.
+2026-04-04 08:25:09,735 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (6/20) in 1.00 second.
+2026-04-04 08:25:10,740 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (7/20) in 1.00 second.
+2026-04-04 08:25:11,745 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (8/20) in 1.00 second.
+2026-04-04 08:25:12,751 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (9/20) in 1.00 second.
+2026-04-04 08:25:13,756 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (10/20) in 1.00 second.
+2026-04-04 08:25:14,761 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (11/20) in 1.00 second.
+2026-04-04 08:25:15,767 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (12/20) in 1.00 second.
+2026-04-04 08:25:16,772 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (13/20) in 1.00 second.
+2026-04-04 08:25:17,777 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (14/20) in 1.00 second.
+2026-04-04 08:25:18,783 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (15/20) in 1.00 second.
+2026-04-04 08:25:19,788 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (16/20) in 1.00 second.
+2026-04-04 08:25:20,794 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (17/20) in 1.00 second.
+2026-04-04 08:25:21,800 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (18/20) in 1.00 second.
+2026-04-04 08:25:22,803 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (19/20) in 1.00 second.
+2026-04-04 08:25:23,807 [CRITICAL] celery.backends.asynchronous:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:25:23,807 [ERROR] app: Exception on /admin/ [POST]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 349, in reconnect_on_error
+    yield
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 165, in _consume_from
+    self._pubsub.subscribe(key)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1265, in subscribe
+    ret_val = self.execute_command("SUBSCRIBE", *new_channels.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1023, in execute_command
+    self.connection = self.connection_pool.get_connection()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 352, in reconnect_on_error
+    self._reconnect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 121, in _reconnect
+    self._ensure(self._reconnect_pubsub, ())
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 413, in ensure
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 103, in _reconnect_pubsub
+    metas = self.backend.client.mget(self.subscribed_to)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/commands/core.py", line 2241, in mget
+    return self.execute_command("MGET", *args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 716, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 722, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/admin/routes.py", line 25, in admin_panel
+    task = fetch_and_add_manga_from_url.delay(url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 463, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 627, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 968, in send_task
+    self.backend.on_task_call(P, task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 402, in on_task_call
+    self.result_consumer.consume_from(task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 157, in consume_from
+    return self.start(task_id)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 135, in start
+    self._consume_from(initial_task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 164, in _consume_from
+    with self.reconnect_on_error():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 355, in reconnect_on_error
+    raise RuntimeError(E_RETRY_LIMIT_EXCEEDED) from exc
+RuntimeError:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:25:23,819 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:25:23] "[35m[1mPOST /admin/?token=admin123 HTTP/1.1[0m" 500 -
+2026-04-04 08:26:44,121 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:26:44,122 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:26:44,122 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:26:44,122 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:26:44,122 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:26:44,122 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:26:44,236 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:26:44,236 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:26:47,885 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:26:47] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:26:48,015 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (0/20) now.
+2026-04-04 08:26:48,017 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (1/20) in 1.00 second.
+2026-04-04 08:26:49,021 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (2/20) in 1.00 second.
+2026-04-04 08:26:50,025 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (3/20) in 1.00 second.
+2026-04-04 08:26:51,028 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (4/20) in 1.00 second.
+2026-04-04 08:26:52,034 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (5/20) in 1.00 second.
+2026-04-04 08:26:53,037 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (6/20) in 1.00 second.
+2026-04-04 08:26:54,040 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (7/20) in 1.00 second.
+2026-04-04 08:26:55,044 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (8/20) in 1.00 second.
+2026-04-04 08:26:56,047 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (9/20) in 1.00 second.
+2026-04-04 08:26:57,050 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (10/20) in 1.00 second.
+2026-04-04 08:26:58,052 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (11/20) in 1.00 second.
+2026-04-04 08:26:59,056 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (12/20) in 1.00 second.
+2026-04-04 08:27:00,059 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (13/20) in 1.00 second.
+2026-04-04 08:27:01,063 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (14/20) in 1.00 second.
+2026-04-04 08:27:02,069 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (15/20) in 1.00 second.
+2026-04-04 08:27:03,072 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (16/20) in 1.00 second.
+2026-04-04 08:27:04,076 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (17/20) in 1.00 second.
+2026-04-04 08:27:05,081 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (18/20) in 1.00 second.
+2026-04-04 08:27:06,084 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (19/20) in 1.00 second.
+2026-04-04 08:27:07,087 [CRITICAL] celery.backends.asynchronous:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:27:07,088 [ERROR] app: Exception on /admin/ [POST]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 349, in reconnect_on_error
+    yield
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 165, in _consume_from
+    self._pubsub.subscribe(key)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1265, in subscribe
+    ret_val = self.execute_command("SUBSCRIBE", *new_channels.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1023, in execute_command
+    self.connection = self.connection_pool.get_connection()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 352, in reconnect_on_error
+    self._reconnect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 121, in _reconnect
+    self._ensure(self._reconnect_pubsub, ())
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 413, in ensure
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 103, in _reconnect_pubsub
+    metas = self.backend.client.mget(self.subscribed_to)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/commands/core.py", line 2241, in mget
+    return self.execute_command("MGET", *args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 716, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 722, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/admin/routes.py", line 25, in admin_panel
+    task = fetch_and_add_manga_from_url.delay(url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 463, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 627, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 968, in send_task
+    self.backend.on_task_call(P, task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 402, in on_task_call
+    self.result_consumer.consume_from(task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 157, in consume_from
+    return self.start(task_id)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 135, in start
+    self._consume_from(initial_task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 164, in _consume_from
+    with self.reconnect_on_error():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 355, in reconnect_on_error
+    raise RuntimeError(E_RETRY_LIMIT_EXCEEDED) from exc
+RuntimeError:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:27:07,098 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:27:07] "[35m[1mPOST /admin/?token=admin123 HTTP/1.1[0m" 500 -
+2026-04-04 08:29:00,772 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:29:00,773 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:29:00,773 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:29:00,773 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:29:00,773 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:29:00,773 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:29:02,744 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:29:02,744 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:29:02,744 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:29:02,744 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:29:02,745 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:29:02,745 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:29:02,892 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:29:02,893 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:29:05,836 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:29:05] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:29:05,999 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (0/20) now.
+2026-04-04 08:29:06,001 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (1/20) in 1.00 second.
+2026-04-04 08:29:07,004 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (2/20) in 1.00 second.
+2026-04-04 08:29:08,008 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (3/20) in 1.00 second.
+2026-04-04 08:29:09,011 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (4/20) in 1.00 second.
+2026-04-04 08:29:10,015 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (5/20) in 1.00 second.
+2026-04-04 08:29:11,018 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (6/20) in 1.00 second.
+2026-04-04 08:29:12,024 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (7/20) in 1.00 second.
+2026-04-04 08:29:13,027 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (8/20) in 1.00 second.
+2026-04-04 08:29:14,030 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (9/20) in 1.00 second.
+2026-04-04 08:29:15,033 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (10/20) in 1.00 second.
+2026-04-04 08:29:16,036 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (11/20) in 1.00 second.
+2026-04-04 08:29:17,039 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (12/20) in 1.00 second.
+2026-04-04 08:29:18,042 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (13/20) in 1.00 second.
+2026-04-04 08:29:19,045 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (14/20) in 1.00 second.
+2026-04-04 08:29:20,048 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (15/20) in 1.00 second.
+2026-04-04 08:29:21,051 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (16/20) in 1.00 second.
+2026-04-04 08:29:22,055 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (17/20) in 1.00 second.
+2026-04-04 08:29:23,060 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (18/20) in 1.00 second.
+2026-04-04 08:29:24,063 [ERROR] celery.backends.redis: Connection to Redis lost: Retry (19/20) in 1.00 second.
+2026-04-04 08:29:25,066 [CRITICAL] celery.backends.asynchronous:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:29:25,067 [ERROR] app: Exception on /admin/ [POST]
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 349, in reconnect_on_error
+    yield
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 165, in _consume_from
+    self._pubsub.subscribe(key)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1265, in subscribe
+    ret_val = self.execute_command("SUBSCRIBE", *new_channels.keys())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 1023, in execute_command
+    self.connection = self.connection_pool.get_connection()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1003, in connect_check_health
+    sock = self._connect()
+           ^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1515, in _connect
+    raise err
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1499, in _connect
+    sock.connect(socket_address)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 352, in reconnect_on_error
+    self._reconnect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 121, in _reconnect
+    self._ensure(self._reconnect_pubsub, ())
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 413, in ensure
+    return retry_over_time(
+           ^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/kombu/utils/functional.py", line 318, in retry_over_time
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 103, in _reconnect_pubsub
+    metas = self.backend.client.mget(self.subscribed_to)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/commands/core.py", line 2241, in mget
+    return self.execute_command("MGET", *args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 716, in execute_command
+    return self._execute_command(*args, **options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/client.py", line 722, in _execute_command
+    conn = self.connection or pool.get_connection()
+                              ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/utils.py", line 236, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 3041, in get_connection
+    connection.connect()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 976, in connect
+    self.retry.call_with_retry(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 132, in call_with_retry
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/retry.py", line 120, in call_with_retry
+    return do()
+           ^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 977, in <lambda>
+    lambda: self.connect_check_health(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/redis/connection.py", line 1025, in connect_check_health
+    raise e
+redis.exceptions.ConnectionError: Error 111 connecting to localhost:6379. Connection refused.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/flask/app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/admin/routes.py", line 25, in admin_panel
+    task = fetch_and_add_manga_from_url.delay(url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 463, in delay
+    return self.apply_async(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/task.py", line 627, in apply_async
+    return app.send_task(
+           ^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/base.py", line 968, in send_task
+    self.backend.on_task_call(P, task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 402, in on_task_call
+    self.result_consumer.consume_from(task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 157, in consume_from
+    return self.start(task_id)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 135, in start
+    self._consume_from(initial_task_id)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/redis.py", line 164, in _consume_from
+    with self.reconnect_on_error():
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/backends/asynchronous.py", line 355, in reconnect_on_error
+    raise RuntimeError(E_RETRY_LIMIT_EXCEEDED) from exc
+RuntimeError:
+Retry limit exceeded while trying to reconnect to the Celery result store
+backend. The Celery application must be restarted.
+
+2026-04-04 08:29:25,077 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:29:25] "[35m[1mPOST /admin/?token=admin123 HTTP/1.1[0m" 500 -
+2026-04-04 08:29:30,087 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:29:30] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:31:21,551 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:31:21,552 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:31:21,552 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:31:21,552 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:31:21,552 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:31:21,552 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:31:21,679 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:31:21,679 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:31:25,205 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:31:25] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:31:25,297 [INFO] mangafire: Starting task: fetch_and_add_manga_from_url for https://aquareader.net/manga/solo-leveling
+2026-04-04 08:31:25,314 [ERROR] celery.app.trace: Task app.tasks.scraper_tasks.fetch_and_add_manga_from_url[98519d00-3cf9-4c1b-b1b1-3fc93c9e125c] raised unexpected: RuntimeError("There is no current event loop in thread 'Thread-4 (process_request_thread)'.")
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/celery/app/trace.py", line 585, in trace_task
+    R = retval = fun(*args, **kwargs)
+                 ^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/core/celery_app.py", line 28, in __call__
+    return self.run(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/tasks/scraper_tasks.py", line 152, in fetch_and_add_manga_from_url
+    loop = asyncio.get_event_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/asyncio/events.py", line 702, in get_event_loop
+    raise RuntimeError('There is no current event loop in thread %r.'
+RuntimeError: There is no current event loop in thread 'Thread-4 (process_request_thread)'.
+2026-04-04 08:31:25,315 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:31:25] "[32mPOST /admin/?token=admin123 HTTP/1.1[0m" 302 -
+2026-04-04 08:31:25,361 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:31:25] "GET /admin/?token=admin123&msg=Background+task+98519d00-3cf9-4c1b-b1b1-3fc93c9e125c+started+to+fetch+https://aquareader.net/manga/solo-leveling HTTP/1.1" 200 -
+2026-04-04 08:31:27,369 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:31:27] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:33:01,155 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.schemas
+2026-04-04 08:33:01,155 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.tables
+2026-04-04 08:33:01,156 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.types
+2026-04-04 08:33:01,156 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.constraints
+2026-04-04 08:33:01,156 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.defaults
+2026-04-04 08:33:01,156 [INFO] alembic.runtime.plugins: setup plugin alembic.autogenerate.comments
+2026-04-04 08:33:01,280 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-04 08:33:01,280 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-04-04 08:33:04,897 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:33:04] "GET /api/manga/popular HTTP/1.1" 200 -
+2026-04-04 08:33:04,995 [INFO] mangafire: Starting task: fetch_and_add_manga_from_url for https://aquareader.net/manga/solo-leveling
+2026-04-04 08:33:07,438 [ERROR] mangafire: Failed to fetch details for URL: https://aquareader.net/manga/solo-leveling
+2026-04-04 08:33:07,449 [INFO] celery.app.trace: Task app.tasks.scraper_tasks.fetch_and_add_manga_from_url[f0166908-38ce-4b70-94ab-456a51f94d1d] succeeded in 2.454449195000052s: {'status': 'error', 'message': 'Failed to fetch details'}
+2026-04-04 08:33:07,450 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:33:07] "[32mPOST /admin/?token=admin123 HTTP/1.1[0m" 302 -
+2026-04-04 08:33:07,472 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:33:07] "GET /admin/?token=admin123&msg=Background+task+f0166908-38ce-4b70-94ab-456a51f94d1d+started+to+fetch+https://aquareader.net/manga/solo-leveling HTTP/1.1" 200 -
+2026-04-04 08:33:09,480 [INFO] werkzeug: 127.0.0.1 - - [04/Apr/2026 08:33:09] "GET /api/manga/popular HTTP/1.1" 200 -

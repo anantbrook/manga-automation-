@@ -85,8 +85,12 @@ async def async_download_chapter(chapter_id, source, chapter_url):
 @celery_app.task(bind=True, max_retries=3)
 def download_chapter_images(self, chapter_id, source, chapter_url):
     logger.info(f"Downloading images for chapter {chapter_id}")
-    loop = asyncio.get_event_loop()
-    if loop.is_closed():
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     result = loop.run_until_complete(async_download_chapter(chapter_id, source, chapter_url))
@@ -149,8 +153,12 @@ async def async_fetch_and_add_manga(url):
 @celery_app.task(bind=True, max_retries=3)
 def fetch_and_add_manga_from_url(self, url):
     logger.info(f"Starting task: fetch_and_add_manga_from_url for {url}")
-    loop = asyncio.get_event_loop()
-    if loop.is_closed():
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     result = loop.run_until_complete(async_fetch_and_add_manga(url))
