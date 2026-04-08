@@ -280,9 +280,17 @@ def login():
 def handle_bookmarks(current_user):
     if request.method == 'GET':
         bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
+        if not bookmarks:
+            return jsonify([])
+
+        manga_ids = [b.manga_id for b in bookmarks]
+        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+
+        manga_map = {m.id: m for m in mangas}
+
         result = []
         for b in bookmarks:
-            manga = db.session.get(Manga, b.manga_id)
+            manga = manga_map.get(b.manga_id)
             if manga:
                 result.append({
                     'manga_id': manga.id,
