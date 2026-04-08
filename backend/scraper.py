@@ -155,29 +155,3 @@ class AquaReaderScraper(MangaScraper):
             print(f"Error fetching chapter images: {e}")
             return []
 
-# Singleton instance to preserve backward compatibility for now
-_default_scraper = AquaReaderScraper()
-def search_manga(query):
-    return _default_scraper.search_manga(query)
-def get_manga_details(manga_id):
-    return _default_scraper.get_manga_details(manga_id)
-def get_chapter_images(manga_id, chapter_slug):
-    return _default_scraper.get_chapter_images(manga_id, chapter_slug)
-
-if __name__ == "__main__":
-    print("Testing search...")
-    res = search_manga("solo")
-    print(res[:2])
-    if res:
-        manga_id = res[0]['id']
-        print(f"\nTesting details for {manga_id}...")
-        details = get_manga_details(manga_id)
-        if details:
-            print(f"Title: {details['title']}")
-            print(f"Chapters found: {len(details['chapters'])}")
-            if details['chapters']:
-                chap_slug = details['chapters'][-1]['id'].split('/')[-1] # take first (usually latest or oldest)
-                print(f"\nTesting images for {manga_id}/{chap_slug}...")
-                imgs = get_chapter_images(manga_id, chap_slug)
-                print(f"Images found: {len(imgs)}")
-                print(f"First image: {imgs[0] if imgs else 'None'}")
