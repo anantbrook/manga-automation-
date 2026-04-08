@@ -202,9 +202,12 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+
+                # Fetch all existing chapter IDs for this manga to avoid N+1 queries
+                existing_chapter_ids = {c[0] for c in db.session.query(Chapter.id).filter_by(manga_id=manga_id).all()}
+
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_chapter_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
