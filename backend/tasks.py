@@ -68,6 +68,7 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
     Downloads all images for a given chapter to static/manga/<source>/<manga_id>/<chapter_slug>/
     """
     from app import create_app
+    from utils import get_safe_manga_dir
     app = create_app()
     with app.app_context():
         scraper = get_scraper(source)
@@ -78,7 +79,13 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
     if not images:
         return {'status': 'error', 'msg': 'No images found'}
 
-    base_dir = os.path.join(os.path.dirname(__file__), 'static', 'manga', source, manga_id, chapter_slug)
+    # Sanitize inputs and get safe local directory
+    base_manga_path = os.path.join(os.path.dirname(__file__), 'static', 'manga')
+    base_dir = get_safe_manga_dir(base_manga_path, source, manga_id, chapter_slug)
+
+    if not base_dir:
+        return {'status': 'error', 'msg': 'Invalid path components'}
+
     os.makedirs(base_dir, exist_ok=True)
 
     async def _download_all():

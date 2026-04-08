@@ -2,6 +2,7 @@ import os
 import asyncio
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request, send_file, Response, send_from_directory
+from werkzeug.utils import secure_filename
 from models import db, Manga, Chapter, Subscription
 from scrapers import get_scraper
 import urllib.parse
@@ -106,9 +107,12 @@ async def api_manga_details(source, manga_id):
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
 async def api_chapter_images(source, manga_id, chapter_slug):
+    # Sanitize inputs and get safe local directory
+    base_manga_path = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga')
+    local_dir = get_safe_manga_dir(base_manga_path, source, manga_id, chapter_slug)
+
     # Check if we have it locally downloaded first
-    local_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga', source, manga_id, chapter_slug)
-    if os.path.exists(local_dir):
+    if local_dir and os.path.exists(local_dir):
         files = sorted(os.listdir(local_dir))
         if files:
             # We have local files, serve them directly instead of scraping
@@ -188,8 +192,11 @@ def api_download_status(job_id):
 
 @api_bp.route('/download/zip/<source>/<path:manga_id>/<chapter_slug>')
 def get_zip_download(source, manga_id, chapter_slug):
-    local_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga', source, manga_id, chapter_slug)
-    if not os.path.exists(local_dir):
+    # Sanitize inputs and get safe local directory
+    base_manga_path = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga')
+    local_dir = get_safe_manga_dir(base_manga_path, source, manga_id, chapter_slug)
+
+    if not local_dir or not os.path.exists(local_dir):
         return jsonify({'error': 'Not downloaded locally yet'}), 404
 
     files = sorted(os.listdir(local_dir))
@@ -203,7 +210,9 @@ def get_zip_download(source, manga_id, chapter_slug):
             zf.write(filepath, f)
 
     memory_file.seek(0)
-    return send_file(memory_file, download_name=f"{manga_id}-{chapter_slug}.cbz", as_attachment=True, mimetype='application/zip')
+    # Re-sanitize for filename just in case
+    download_filename = secure_filename(f"{manga_id}-{chapter_slug}.cbz")
+    return send_file(memory_file, download_name=download_filename, as_attachment=True, mimetype='application/zip')
 
 @api_bp.route('/sitemap.xml')
 def sitemap():
