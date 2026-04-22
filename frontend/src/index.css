@@ -170,3 +170,90 @@ a:hover {
 .border { border-width: 1px; border-style: solid; }
 .rounded { border-radius: 0.25rem; }
 .rounded-xl { border-radius: 0.75rem; }
+
+/* Rating System Styles */
+.rating-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.stars {
+  display: flex;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.star {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  transition: color 0.2s, text-shadow 0.2s;
+}
+
+.star.active {
+  color: var(--accent-secondary);
+  text-shadow: 0 0 10px var(--accent-glow);
+}
+
+.star:hover {
+  transform: scale(1.1);
+}
+
+/* Reader Component Styles missing from previous cleanup */
+.reader-container {
+  min-height: 100vh;
+  background: var(--bg-base);
+}
+
+.webtoon-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #000;
+}
+
+.webtoon-view img {
+  max-width: 100%;
+  margin: 0;
+  display: block;
+}
+
+.paged-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+}
+
+.paged-view img {
+  max-height: 90vh;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.page-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.btn-mode {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+.btn-mode.active {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.reader-controls {
+  display: flex;
+  gap: 1rem;
+}

@@ -48,3 +48,13 @@ class ReadingHistory(db.Model):
     manga_id = db.Column(db.String(255), db.ForeignKey('manga.id'), nullable=False)
     chapter_id = db.Column(db.String(255), nullable=False)
     last_read = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+class Rating(db.Model):
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'manga_id', name='uq_rating'),
+    )
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    manga_id = db.Column(db.String(255), db.ForeignKey('manga.id'), nullable=False)
+    score = db.Column(db.Integer, nullable=False) # 1 to 5 stars
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))

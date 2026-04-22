@@ -149,7 +149,7 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org', 'mangadex.network']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
@@ -375,3 +375,35 @@ def handle_history(current_user):
 
         db.session.commit()
         return jsonify({'message': 'History updated'}), 200
+
+from models import Rating
+from sqlalchemy.sql import func
+
+@api_bp.route('/manga/<path:manga_id>/rating', methods=['GET'])
+def get_manga_rating(manga_id):
+    avg_rating = db.session.query(func.avg(Rating.score)).filter(Rating.manga_id == manga_id).scalar()
+    count = db.session.query(func.count(Rating.id)).filter(Rating.manga_id == manga_id).scalar()
+
+    return jsonify({
+        'average': round(avg_rating, 1) if avg_rating else 0,
+        'count': count or 0
+    })
+
+@api_bp.route('/manga/<path:manga_id>/rating', methods=['POST'])
+@token_required
+def submit_manga_rating(current_user, manga_id):
+    data = request.json
+    score = data.get('score')
+
+    if not score or not isinstance(score, int) or score < 1 or score > 5:
+        return jsonify({'error': 'Invalid score. Must be integer 1-5.'}), 400
+
+    rating = Rating.query.filter_by(user_id=current_user.id, manga_id=manga_id).first()
+    if rating:
+        rating.score = score
+    else:
+        rating = Rating(user_id=current_user.id, manga_id=manga_id, score=score)
+        db.session.add(rating)
+
+    db.session.commit()
+    return jsonify({'message': 'Rating submitted successfully', 'score': score}), 200

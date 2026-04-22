@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Flame, Download, ChevronLeft, ChevronRight, Moon, Sun, ShoppingCart } from 'lucide-react';
+import { Search, Flame, Download, ChevronLeft, ChevronRight, Moon, Sun, ShoppingCart, Star } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import './App.css';
 
@@ -143,6 +143,8 @@ const MangaDetails = () => {
 
   const [manga, setManga] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState({ average: 0, count: 0, userScore: 0 });
+  const [hoverRating, setHoverRating] = useState(0);
 
   const handleDownload = async (source, mangaId, chapterId) => {
     try {
@@ -187,8 +189,40 @@ const MangaDetails = () => {
       }
       setLoading(false);
     };
+
+    const fetchRating = async () => {
+      try {
+        const res = await axios.get(`${PROXY}/api/manga/${id}/rating`);
+        setRating(prev => ({ ...prev, average: res.data.average, count: res.data.count }));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     fetchDetails();
+    fetchRating();
   }, [id, source]);
+
+  const handleRating = async (score) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("Please login to rate this manga");
+      return;
+    }
+    try {
+      await axios.post(`${PROXY}/api/manga/${id}/rating`,
+        { score },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setRating(prev => ({ ...prev, userScore: score }));
+
+      // Refetch average
+      const res = await axios.get(`${PROXY}/api/manga/${id}/rating`);
+      setRating(prev => ({ ...prev, average: res.data.average, count: res.data.count }));
+    } catch (err) {
+      console.error("Rating error", err);
+    }
+  };
 
   if (loading) return <div className="container"><div className="loader"></div></div>;
   if (!manga) return <div className="container"><h2>Manga not found.</h2></div>;
@@ -232,7 +266,26 @@ const MangaDetails = () => {
           <h1>{manga.title}</h1>
           <div className="meta-tags">
             <span className="tag source-tag">{manga.source}</span>
+            <span className="tag ml-2">{manga.chapters ? manga.chapters.length : 0} Chapters</span>
           </div>
+
+          <div className="rating-container mb-4">
+            <div className="stars" onMouseLeave={() => setHoverRating(0)}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`star ${star <= (hoverRating || rating.userScore || Math.round(rating.average)) ? 'active' : ''}`}
+                  onClick={() => handleRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  fill={star <= (hoverRating || rating.userScore || Math.round(rating.average)) ? 'currentColor' : 'none'}
+                />
+              ))}
+            </div>
+            <span className="text-sm font-mono text-orange-400">
+              {rating.average} / 5.0 ({rating.count} ratings)
+            </span>
+          </div>
+
           <p className="synopsis">{manga.synopsis}</p>
 
           <div className="actions mt-6">
