@@ -190,8 +190,12 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
             scraper = get_scraper('mangadex')
 
+            # Bulk-fetch all relevant Manga objects to avoid N+1 query
+            mangas = db.session.query(Manga).filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_map = {m.id: m for m in mangas}
+
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_map.get(manga_id)
                 details = await scraper.get_manga_details(manga_id)
 
                 # Sleep to respect rate limit without blocking loop
