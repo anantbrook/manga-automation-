@@ -1,13 +1,11 @@
 import os
-import asyncio
 from datetime import datetime, timedelta, timezone
-from flask import Blueprint, jsonify, request, send_file, Response, send_from_directory
-from models import db, Manga, Chapter, Subscription
+from flask import Blueprint, jsonify, request, send_file, Response
+from models import db, Manga, Chapter
 from scrapers import get_scraper
 import urllib.parse
 import socket
 import ipaddress
-import uuid
 import zipfile
 import io
 
