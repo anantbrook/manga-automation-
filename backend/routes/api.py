@@ -10,6 +10,11 @@ import ipaddress
 import uuid
 import zipfile
 import io
+import logging
+import requests
+from utils import get_safe_manga_dir
+
+logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -107,7 +112,12 @@ async def api_manga_details(source, manga_id):
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
 async def api_chapter_images(source, manga_id, chapter_slug):
     # Check if we have it locally downloaded first
-    local_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga', source, manga_id, chapter_slug)
+    base_manga_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga')
+    try:
+        local_dir = get_safe_manga_dir(base_manga_dir, source, manga_id, chapter_slug)
+    except ValueError:
+        return jsonify({'error': 'Invalid path components'}), 400
+
     if os.path.exists(local_dir):
         files = sorted(os.listdir(local_dir))
         if files:
@@ -136,14 +146,14 @@ def proxy_image():
         ip = socket.gethostbyname(hostname)
         if ipaddress.ip_address(ip).is_private:
             return "Invalid URL: Private IP", 403
-    except Exception:
+    except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
     allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
-    if not any(domain in hostname for domain in allowed_domains):
+    # Secure external image proxy URLs with strict domain validation
+    if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
-    import requests
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
@@ -161,8 +171,9 @@ def proxy_image():
                         status=r.status_code,
                         headers=headers,
                         content_type=r.headers.get('content-type', 'image/jpeg'))
-    except Exception as e:
-        return str(e), 500
+    except requests.exceptions.RequestException as e:
+        logger.exception("Failed to proxy image: %s", url)
+        return "Failed to fetch image", 500
 
 @api_bp.route('/download/<source>/<path:manga_id>/<chapter_slug>', methods=['POST'])
 def api_download_chapter(source, manga_id, chapter_slug):
@@ -188,7 +199,12 @@ def api_download_status(job_id):
 
 @api_bp.route('/download/zip/<source>/<path:manga_id>/<chapter_slug>')
 def get_zip_download(source, manga_id, chapter_slug):
-    local_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga', source, manga_id, chapter_slug)
+    base_manga_dir = os.path.join(os.path.dirname(__file__), '..', 'static', 'manga')
+    try:
+        local_dir = get_safe_manga_dir(base_manga_dir, source, manga_id, chapter_slug)
+    except ValueError:
+        return jsonify({'error': 'Invalid path components'}), 400
+
     if not os.path.exists(local_dir):
         return jsonify({'error': 'Not downloaded locally yet'}), 404
 
@@ -280,9 +296,16 @@ def login():
 def handle_bookmarks(current_user):
     if request.method == 'GET':
         bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
+        if not bookmarks:
+            return jsonify([])
+
+        manga_ids = [b.manga_id for b in bookmarks]
+        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+        manga_dict = {m.id: m for m in mangas}
+
         result = []
         for b in bookmarks:
-            manga = db.session.get(Manga, b.manga_id)
+            manga = manga_dict.get(b.manga_id)
             if manga:
                 result.append({
                     'manga_id': manga.id,
@@ -317,9 +340,16 @@ def handle_bookmarks(current_user):
 def handle_history(current_user):
     if request.method == 'GET':
         history = ReadingHistory.query.filter_by(user_id=current_user.id).order_by(ReadingHistory.last_read.desc()).limit(20).all()
+        if not history:
+            return jsonify([])
+
+        manga_ids = [h.manga_id for h in history]
+        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+        manga_dict = {m.id: m for m in mangas}
+
         result = []
         for h in history:
-            manga = db.session.get(Manga, h.manga_id)
+            manga = manga_dict.get(h.manga_id)
             if manga:
                 result.append({
                     'manga_id': manga.id,

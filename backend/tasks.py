@@ -2,7 +2,11 @@ import os
 from celery import Celery
 import asyncio
 import aiohttp
+import logging
 from scrapers import get_scraper
+from utils import get_safe_manga_dir
+
+logger = logging.getLogger(__name__)
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
@@ -40,27 +44,30 @@ def check_manga_updates_job():
         unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
         scraper = get_scraper('mangadex')
+
+        async def _check_all_updates():
+            for manga_id in unique_manga_ids:
+                manga_obj = db.session.get(Manga, manga_id)
+                if not manga_obj: continue
+
+                # Re-scraping updates the DB directly
+                details = await scraper.get_manga_details(manga_id)
+                await asyncio.sleep(2) # Non-blocking sleep
+
+                if not details: continue
+
+                for chap in details['chapters']:
+                    chap_id = chap['id']
+                    existing = db.session.get(Chapter, chap_id)
+                    if not existing:
+                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
+                        db.session.add(chapter)
+
+                db.session.commit()
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-
-        for manga_id in unique_manga_ids:
-            manga_obj = db.session.get(Manga, manga_id)
-            if not manga_obj: continue
-
-            # Re-scraping updates the DB directly (as written in the api_manga_details flow)
-            details = loop.run_until_complete(scraper.get_manga_details(manga_id))
-            time.sleep(2)
-
-            if not details: continue
-
-            for chap in details['chapters']:
-                chap_id = chap['id']
-                existing = db.session.get(Chapter, chap_id)
-                if not existing:
-                    chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
-                    db.session.add(chapter)
-
-            db.session.commit()
+        loop.run_until_complete(_check_all_updates())
 
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):
@@ -78,7 +85,13 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
     if not images:
         return {'status': 'error', 'msg': 'No images found'}
 
-    base_dir = os.path.join(os.path.dirname(__file__), 'static', 'manga', source, manga_id, chapter_slug)
+    base_manga_dir = os.path.join(os.path.dirname(__file__), 'static', 'manga')
+    try:
+        base_dir = get_safe_manga_dir(base_manga_dir, source, manga_id, chapter_slug)
+    except ValueError:
+        logger.error("Invalid path components for download: %s %s %s", source, manga_id, chapter_slug)
+        return {'status': 'error', 'msg': 'Invalid path components'}
+
     os.makedirs(base_dir, exist_ok=True)
 
     async def _download_all():
@@ -94,7 +107,7 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
                         with open(filepath, 'wb') as f:
                             f.write(await resp.read())
                 except Exception as e:
-                    print(f"Failed to download {img_url}: {e}")
+                    logger.exception("Failed to download %s", img_url)
 
     loop.run_until_complete(_download_all())
     return {'status': 'success', 'path': base_dir, 'count': len(images)}
