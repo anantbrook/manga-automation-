@@ -38,6 +38,7 @@ class MangaDexScraper(MangaScraper):
             for rel in item['relationships']:
                 if rel['type'] == 'cover_art' and 'attributes' in rel:
                     cover_filename = rel['attributes'].get('fileName')
+                    break
 
             cover_url = f"{self.uploads_url}/covers/{manga_id}/{cover_filename}" if cover_filename else None
 
@@ -64,6 +65,7 @@ class MangaDexScraper(MangaScraper):
         for rel in item['relationships']:
             if rel['type'] == 'cover_art' and 'attributes' in rel:
                 cover_filename = rel['attributes'].get('fileName')
+                break
         cover_url = f"{self.uploads_url}/covers/{manga_id}/{cover_filename}" if cover_filename else None
 
         # Fetch English chapters
