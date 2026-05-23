@@ -23,8 +23,41 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-job': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 7200.0, # seconds (2 hours)
+    },
 }
 celery.conf.timezone = 'UTC'
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Crawls for new manga on all scrapers to organically grow the database.
+    """
+    from app import create_app
+    from models import db, Manga
+    from scrapers import scrapers
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_global_updates():
+            for source, scraper in scrapers.items():
+                try:
+                    results = await scraper.get_latest_updates()
+                    for item in results:
+                        manga_id = item['id']
+                        if not db.session.get(Manga, manga_id):
+                            manga = Manga(id=manga_id, title=item['title'], source=source, cover_url=item.get('cover_url'))
+                            db.session.add(manga)
+                    db.session.commit()
+                except Exception as e:
+                    logger.exception(f"Failed to fetch global updates for {source}: {e}")
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_global_updates())
+
 
 @celery.task
 def check_manga_updates_job():
@@ -42,13 +75,14 @@ def check_manga_updates_job():
     with app.app_context():
         subs = Subscription.query.all()
         unique_manga_ids = list(set([sub.manga_id for sub in subs]))
-
-        scraper = get_scraper('mangadex')
+        mangas = {m.id: m for m in Manga.query.filter(Manga.id.in_(unique_manga_ids)).all()}
 
         async def _check_all_updates():
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = mangas.get(manga_id)
                 if not manga_obj: continue
+
+                scraper = get_scraper(manga_obj.source)
 
                 # Re-scraping updates the DB directly
                 details = await scraper.get_manga_details(manga_id)
@@ -56,10 +90,12 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                chap_ids = [c['id'] for c in details['chapters']]
+                existing_chapters = {c.id: c for c in Chapter.query.filter(Chapter.id.in_(chap_ids)).all()}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if not existing_chapters.get(chap_id):
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
 
