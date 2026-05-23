@@ -92,10 +92,12 @@ async def api_manga_details(source, manga_id):
     manga.synopsis = details['synopsis']
     manga.last_updated = datetime.now(timezone.utc)
 
+    chap_ids = [c['id'] for c in details['chapters']]
+    existing_chapters = {c.id: c for c in Chapter.query.filter(Chapter.id.in_(chap_ids)).all()}
+
     for chap in details['chapters']:
         chap_id = chap['id']
-        chapter = db.session.get(Chapter, chap_id)
-        if not chapter:
+        if not existing_chapters.get(chap_id):
             num = 0.0
             try:
                 parts = chap['title'].lower().replace('chapter', '').strip().split()

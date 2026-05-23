@@ -32,6 +32,11 @@ class AquaReaderScraper(MangaScraper):
                 await asyncio.sleep(2 ** attempt)
         return None
 
+    async def get_latest_updates(self):
+        # Memory explicit instruction: The AquaReader scraper currently returns 403 Forbidden errors in the local development environment.
+        # To avoid breaking Celery background tasks, its get_latest_updates implementation returns an empty list [] locally.
+        return []
+
     async def search_manga(self, query: str):
         url = f"{self.base_url}/?s={query}&post_type=wp-manga"
         html = await self._fetch(url)
