@@ -23,8 +23,52 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-every-30-mins': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 1800.0, # seconds (30 mins)
+    },
 }
 celery.conf.timezone = 'UTC'
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job managed by Celery Beat.
+    Fetches the latest updates globally from scrapers to organically grow the database.
+    """
+    from app import create_app
+    from models import db, Manga
+    from scrapers import scrapers
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_global_updates():
+            for source, scraper in scrapers.items():
+                try:
+                    updates = await scraper.get_latest_updates()
+                    for item in updates:
+                        manga_id = item['id']
+                        existing = db.session.get(Manga, manga_id)
+                        if not existing:
+                            # Add to database
+                            manga = Manga(
+                                id=manga_id,
+                                title=item['title'],
+                                cover_url=item['cover_url'],
+                                source=source
+                            )
+                            db.session.add(manga)
+
+                            # Optionally fetch full details immediately or leave it for later when a user views it
+                            # We will leave it to be lazily loaded to save bandwidth and rate limits
+                    db.session.commit()
+                except Exception as e:
+                    logger.error(f"Error fetching global updates from {source}: {e}")
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_global_updates())
+
 
 @celery.task
 def check_manga_updates_job():
@@ -46,8 +90,12 @@ def check_manga_updates_job():
         scraper = get_scraper('mangadex')
 
         async def _check_all_updates():
+            # Bulk fetch mangas
+            mangas = db.session.query(Manga).filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_dict = {m.id: m for m in mangas}
+
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_dict.get(manga_id)
                 if not manga_obj: continue
 
                 # Re-scraping updates the DB directly
@@ -56,12 +104,16 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                # Bulk fetch existing chapters for this manga
+                existing_chapters_query = db.session.query(Chapter).filter_by(manga_id=manga_id).all()
+                existing_chapter_ids = {c.id for c in existing_chapters_query}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapter_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_chapter_ids.add(chap_id) # Prevent duplicates if scraper returns them
 
                 db.session.commit()
 

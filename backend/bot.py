@@ -100,8 +100,13 @@ async def list_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         response = "📋 **Your Subscriptions:**\n\n"
+
+        manga_ids = [sub.manga_id for sub in subs]
+        mangas = db.session.query(Manga).filter(Manga.id.in_(manga_ids)).all()
+        manga_dict = {m.id: m for m in mangas}
+
         for sub in subs:
-            manga = db.session.get(Manga, sub.manga_id)
+            manga = manga_dict.get(sub.manga_id)
             title = manga.title if manga else sub.manga_id
             response += f"• {title} (`{sub.manga_id}`)\n"
 
@@ -190,8 +195,13 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
             scraper = get_scraper('mangadex')
 
+            mangas = db.session.query(Manga).filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_dict = {m.id: m for m in mangas}
+
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_dict.get(manga_id)
+                if not manga_obj: continue
+
                 details = await scraper.get_manga_details(manga_id)
 
                 # Sleep to respect rate limit without blocking loop
@@ -200,14 +210,18 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
                 if not details:
                     continue
 
+                existing_chapters_query = db.session.query(Chapter).filter_by(manga_id=manga_id).all()
+                existing_chapter_ids = {c.id for c in existing_chapters_query}
+
                 # Find new chapters
                 new_chapters = []
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
-                        chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    chap_id = chap['id']
+                    if chap_id not in existing_chapter_ids:
+                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_chapter_ids.add(chap_id)
 
                 if new_chapters:
                     db.session.commit()
