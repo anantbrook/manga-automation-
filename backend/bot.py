@@ -99,9 +99,13 @@ async def list_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=chat_id, text="You don't have any subscriptions.")
             return
 
+        manga_ids = [sub.manga_id for sub in subs]
+        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+        manga_dict = {m.id: m for m in mangas}
+
         response = "📋 **Your Subscriptions:**\n\n"
         for sub in subs:
-            manga = db.session.get(Manga, sub.manga_id)
+            manga = manga_dict.get(sub.manga_id)
             title = manga.title if manga else sub.manga_id
             response += f"• {title} (`{sub.manga_id}`)\n"
 
@@ -190,8 +194,11 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
             scraper = get_scraper('mangadex')
 
+            mangas = Manga.query.filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_dict = {m.id: m for m in mangas}
+
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_dict.get(manga_id)
                 details = await scraper.get_manga_details(manga_id)
 
                 # Sleep to respect rate limit without blocking loop

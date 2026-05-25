@@ -23,6 +23,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 7200.0, # seconds (2 hours)
+    },
 }
 celery.conf.timezone = 'UTC'
 
@@ -46,8 +50,11 @@ def check_manga_updates_job():
         scraper = get_scraper('mangadex')
 
         async def _check_all_updates():
+            mangas = Manga.query.filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_dict = {m.id: m for m in mangas}
+
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_dict.get(manga_id)
                 if not manga_obj: continue
 
                 # Re-scraping updates the DB directly
@@ -56,10 +63,14 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                # Fetch all existing chapters for this manga at once
+                chap_ids = [chap['id'] for chap in details['chapters']]
+                existing_chapters = Chapter.query.filter(Chapter.id.in_(chap_ids)).all()
+                existing_chapter_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapter_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
 
@@ -111,3 +122,44 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
 
     loop.run_until_complete(_download_all())
     return {'status': 'success', 'path': base_dir, 'count': len(images)}
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job to crawl and populate the database with the latest manga updates.
+    Runs periodically to organically grow the manga collection.
+    """
+    from app import create_app
+    from models import db, Manga
+    from scrapers import scrapers
+    from datetime import datetime, timezone
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_and_store():
+            for source, scraper in scrapers.items():
+                try:
+                    latest = await scraper.get_latest_updates(limit=20)
+                    for item in latest:
+                        manga = db.session.get(Manga, item['id'])
+                        if not manga:
+                            manga = Manga(
+                                id=item['id'],
+                                title=item['title'],
+                                source=item['source'],
+                                cover_url=item['cover_url'],
+                                last_updated=datetime.now(timezone.utc)
+                            )
+                            db.session.add(manga)
+                        else:
+                            manga.last_updated = datetime.now(timezone.utc)
+                            if item.get('cover_url'):
+                                manga.cover_url = item['cover_url']
+                    db.session.commit()
+                except Exception as e:
+                    logger.exception("Error fetching latest updates for source %s: %s", source, e)
+                    db.session.rollback()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_and_store())

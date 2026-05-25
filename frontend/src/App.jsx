@@ -79,9 +79,11 @@ const AffiliateBanner = () => (
 
 const Home = () => {
   const [results, setResults] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [latest, setLatest] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchParams] = useSearchParams();
-  const query = searchParams.get('q') || 'solo leveling';
+  const query = searchParams.get('q');
   const source = searchParams.get('source') || 'mangadex';
 
   const siteUrl = window.location.origin;
@@ -90,8 +92,14 @@ const Home = () => {
     const fetchManga = async () => {
       setLoading(true);
       try {
-        const res = await axios.get(`${PROXY}/api/search?q=${query}&source=${source}`);
-        setResults(res.data);
+        if (query) {
+          const res = await axios.get(`${PROXY}/api/search?q=${query}&source=${source}`);
+          setResults(res.data);
+        } else {
+          const res = await axios.get(`${PROXY}/api/home`);
+          setTrending(res.data.trending || []);
+          setLatest(res.data.latest || []);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -103,7 +111,7 @@ const Home = () => {
   return (
     <div className="container">
       <Helmet>
-        <title>{query !== 'solo leveling' ? `Search: ${query} - MangaFire PRO` : 'MangaFire PRO - Read Manga Free'}</title>
+        <title>{query ? `Search: ${query} - MangaFire PRO` : 'MangaFire PRO - Read Manga Free'}</title>
         <meta name="description" content="Read your favorite manga online for free. Cyberpunk dark mode reader. Fast downloads and multi-source scraping." />
         <meta property="og:title" content="MangaFire PRO - Read Manga Free" />
         <meta property="og:description" content="Read your favorite manga online for free. Fast downloads and multi-source scraping." />
@@ -111,26 +119,77 @@ const Home = () => {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-      <h2 className="page-title"><Flame className="inline mb-1 mr-2 text-orange-500"/> Results for "{query}"</h2>
+      {query ? (
+        <h2 className="page-title"><Flame className="inline mb-1 mr-2 text-orange-500"/> Results for "{query}"</h2>
+      ) : (
+        <h2 className="page-title"><Flame className="inline mb-1 mr-2 text-orange-500"/> Discover Manga</h2>
+      )}
 
       <AdBanner />
 
       {loading ? (
         <div className="loader"></div>
       ) : (
-        <div className="manga-grid">
-          {results.map((m) => (
-            <Link to={`/manga/${m.source}/${m.id}`} key={m.id} className="manga-card">
-              <div className="cover-wrapper">
-                <img src={m.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(m.cover_url)}` : 'https://via.placeholder.com/300x400?text=No+Cover'} alt={m.title} loading="lazy" />
-                <div className="source-badge">{m.source}</div>
-              </div>
-              <div className="info">
-                <h3>{m.title}</h3>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <>
+          {query ? (
+            <div className="manga-grid">
+              {results.map((m) => (
+                <Link to={`/manga/${m.source}/${m.id}`} key={m.id} className="manga-card">
+                  <div className="cover-wrapper">
+                    <img src={m.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(m.cover_url)}` : 'https://via.placeholder.com/300x400?text=No+Cover'} alt={m.title} loading="lazy" />
+                    <div className="source-badge">{m.source}</div>
+                  </div>
+                  <div className="info">
+                    <h3>{m.title}</h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="discover-sections space-y-8">
+              {trending.length > 0 && (
+                <div className="section">
+                  <h3 className="text-2xl font-bold mb-4 text-neutral-100 font-rajdhani">Trending Now</h3>
+                  <div className="manga-grid">
+                    {trending.map((m) => (
+                      <Link to={`/manga/${m.source}/${m.id}`} key={`trend-${m.id}`} className="manga-card">
+                        <div className="cover-wrapper">
+                          <img src={m.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(m.cover_url)}` : 'https://via.placeholder.com/300x400?text=No+Cover'} alt={m.title} loading="lazy" />
+                          <div className="source-badge">{m.source}</div>
+                        </div>
+                        <div className="info">
+                          <h3>{m.title}</h3>
+                          {m.views && <p className="text-xs text-neutral-400">{m.views} views</p>}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {latest.length > 0 && (
+                <div className="section">
+                  <h3 className="text-2xl font-bold mb-4 text-neutral-100 font-rajdhani">Latest Updates</h3>
+                  <div className="manga-grid">
+                    {latest.map((m) => (
+                      <Link to={`/manga/${m.source}/${m.id}`} key={`latest-${m.id}`} className="manga-card">
+                        <div className="cover-wrapper">
+                          <img src={m.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(m.cover_url)}` : 'https://via.placeholder.com/300x400?text=No+Cover'} alt={m.title} loading="lazy" />
+                          <div className="source-badge">{m.source}</div>
+                        </div>
+                        <div className="info">
+                          <h3>{m.title}</h3>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {trending.length === 0 && latest.length === 0 && (
+                 <p className="text-neutral-400">No manga available yet. They will appear here once tracked.</p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <AffiliateBanner />

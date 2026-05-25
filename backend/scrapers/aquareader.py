@@ -109,3 +109,7 @@ class AquaReaderScraper(MangaScraper):
             img_url = img.get('data-src') or img.get('src')
             if img_url: images.append(img_url.strip())
         return images
+
+    async def get_latest_updates(self, limit: int = 20) -> list:
+        # Returning [] locally as requested to avoid 403 errors
+        return []
