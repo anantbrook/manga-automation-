@@ -23,6 +23,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-every-hour': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 3600.0,
+    },
 }
 celery.conf.timezone = 'UTC'
 
@@ -56,10 +60,12 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_chapter_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapter_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
 
@@ -68,6 +74,38 @@ def check_manga_updates_job():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_check_all_updates())
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job managed by Celery Beat.
+    Fetches the latest global updates from all scrapers and adds them to the DB.
+    """
+    from app import create_app
+    from models import db, Manga
+    from scrapers import scrapers
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_and_store():
+            for source, scraper in scrapers.items():
+                updates = await scraper.get_latest_updates()
+                if not updates: continue
+
+                for update in updates:
+                    existing = db.session.get(Manga, update['id'])
+                    if not existing:
+                        manga = Manga(id=update['id'], title=update['title'], source=source, cover_url=update['cover_url'])
+                        db.session.add(manga)
+                    else:
+                        existing.title = update['title']
+                        if update['cover_url']:
+                            existing.cover_url = update['cover_url']
+                db.session.commit()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_and_store())
 
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):
