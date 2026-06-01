@@ -46,8 +46,12 @@ def check_manga_updates_job():
         scraper = get_scraper('mangadex')
 
         async def _check_all_updates():
+            # Bulk fetch all relevant manga upfront (avoiding N+1 queries)
+            mangas = Manga.query.filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_dict = {m.id: m for m in mangas}
+
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_dict.get(manga_id)
                 if not manga_obj: continue
 
                 # Re-scraping updates the DB directly

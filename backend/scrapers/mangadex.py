@@ -10,17 +10,19 @@ class MangaDexScraper(MangaScraper):
 
     async def _fetch_json(self, url, params=None):
         session = await self.get_session()
-        for _ in range(3):
+        for attempt in range(4):
             try:
-                async with session.get(url, params=params, timeout=10) as response:
-                    if response.status == 429: # Rate limited
-                        await asyncio.sleep(2)
+                proxy = self.get_proxy()
+                async with session.get(url, params=params, timeout=10, proxy=proxy) as response:
+                    if response.status in [429, 502, 503]: # Rate limited or server error
+                        await asyncio.sleep(2 ** attempt)
                         continue
                     response.raise_for_status()
                     return await response.json()
             except Exception as e:
-                print(f"MangaDex Error {url}: {e}")
-                await asyncio.sleep(1)
+                proxy_str = proxy if 'proxy' in locals() else "Unknown"
+                print(f"MangaDex Error {url} (attempt {attempt+1}, proxy: {proxy_str}): {e}")
+                await asyncio.sleep(2 ** attempt)
         return None
 
     async def search_manga(self, query: str):

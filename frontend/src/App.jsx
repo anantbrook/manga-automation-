@@ -120,7 +120,7 @@ const Home = () => {
       ) : (
         <div className="manga-grid">
           {results.map((m) => (
-            <Link to={`/manga/${m.source}/${m.id}`} key={m.id} className="manga-card">
+            <Link to={`/manga/${m.source}/${m.id}`} key={m.id} className="manga-card bg-neutral-900 border border-orange-500/30 rounded-xl hover:bg-black/80 transition p-4 flex flex-col gap-2">
               <div className="cover-wrapper">
                 <img src={m.cover_url ? `${PROXY}/api/proxy-image?url=${encodeURIComponent(m.cover_url)}` : 'https://via.placeholder.com/300x400?text=No+Cover'} alt={m.title} loading="lazy" />
                 <div className="source-badge">{m.source}</div>
