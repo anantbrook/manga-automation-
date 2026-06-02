@@ -9,9 +9,9 @@ class AquaReaderScraper(MangaScraper):
         super().__init__()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Referer": "https://aquareader.net/"
+            "Referer": "https://aquareader.org/"
         }
-        self.base_url = "https://aquareader.net"
+        self.base_url = "https://aquareader.org"
 
     async def _fetch(self, url, is_json=False):
         session = await self.get_session()
@@ -109,3 +109,7 @@ class AquaReaderScraper(MangaScraper):
             img_url = img.get('data-src') or img.get('src')
             if img_url: images.append(img_url.strip())
         return images
+
+    async def get_latest_updates(self):
+        # Memory explicit instruction: return [] to avoid 403 Forbidden errors breaking celery.
+        return []
