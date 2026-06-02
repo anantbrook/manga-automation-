@@ -53,9 +53,14 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.session.add(manga)
 
             # Add chapters so we know the baseline
+            chapter_ids = [c['id'] for c in details['chapters']]
+            existing_chapters = Chapter.query.filter(Chapter.id.in_(chapter_ids)).all()
+            existing_chapter_ids = {c.id for c in existing_chapters}
+
             for chap in details['chapters']:
-                chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                db.session.add(chapter)
+                if chap['id'] not in existing_chapter_ids:
+                    chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    db.session.add(chapter)
 
             db.session.commit()
 
@@ -202,9 +207,12 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+                chapter_ids = [c['id'] for c in details['chapters']]
+                existing_chapters = Chapter.query.filter(Chapter.id.in_(chapter_ids)).all()
+                existing_chapter_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_chapter_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)

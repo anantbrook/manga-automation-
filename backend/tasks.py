@@ -23,6 +23,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-job': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 1800.0, # 30 mins
+    },
 }
 celery.conf.timezone = 'UTC'
 
@@ -56,10 +60,13 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                chapter_ids = [c['id'] for c in details['chapters']]
+                existing_chapters = Chapter.query.filter(Chapter.id.in_(chapter_ids)).all()
+                existing_chapter_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapter_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
 
@@ -111,3 +118,54 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
 
     loop.run_until_complete(_download_all())
     return {'status': 'success', 'path': base_dir, 'count': len(images)}
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job managed by Celery Beat.
+    Fetches the latest chapter updates from scrapers and dynamically adds new manga
+    to the database to grow the collection organically.
+    """
+    from app import create_app
+    from models import db, Manga, Chapter
+
+    app = create_app()
+    with app.app_context():
+        scrapers = [get_scraper('mangadex'), get_scraper('aquareader')]
+
+        async def _fetch_global():
+            for scraper in scrapers:
+                try:
+                    updates = await scraper.get_latest_updates()
+                    for item in updates:
+                        manga_id = item['id']
+                        source = item['source']
+                        manga_obj = db.session.get(Manga, manga_id)
+
+                        if not manga_obj:
+                            # Not in DB, fetch details to add it
+                            details = await scraper.get_manga_details(manga_id)
+                            await asyncio.sleep(2)
+                            if details:
+                                new_manga = Manga(id=details['id'], title=details['title'], source=source)
+                                new_manga.cover_url = details.get('cover_url')
+                                new_manga.synopsis = details.get('synopsis')
+                                db.session.add(new_manga)
+
+                                for chap in details['chapters']:
+                                    num = 0.0
+                                    try:
+                                        parts = chap['title'].lower().replace('chapter', '').strip().split()
+                                        if parts: num = float(parts[0].replace('-', '.'))
+                                    except (ValueError, IndexError, AttributeError): pass
+
+                                    chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'], number=num)
+                                    db.session.add(chapter)
+
+                                db.session.commit()
+                except Exception as e:
+                    logger.error(f"Error fetching global updates from {scraper.__class__.__name__}: {e}")
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_global())
