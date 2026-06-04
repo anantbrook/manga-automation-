@@ -25,6 +25,24 @@ class MangaScraper(ABC):
         if self._session and not self._session.closed:
             await self._session.close()
 
+    async def fetch_with_retry(self, url, method="GET", params=None, headers=None, is_json=True, max_attempts=4):
+        session = await self.get_session()
+        for attempt in range(max_attempts):
+            proxy = self.get_proxy()
+            try:
+                async with session.request(method, url, params=params, headers=headers, proxy=proxy, timeout=15) as response:
+                    if response.status in [429, 502, 503]:
+                        await asyncio.sleep(2 ** attempt)
+                        continue
+                    response.raise_for_status()
+                    if is_json:
+                        return await response.json()
+                    return await response.text()
+            except Exception as e:
+                print(f"Fetch error {url} (attempt {attempt+1}, proxy: {proxy}): {e}")
+                await asyncio.sleep(2 ** attempt)
+        return None
+
     @abstractmethod
     async def search_manga(self, query: str) -> list:
         pass
