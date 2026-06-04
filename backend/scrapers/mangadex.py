@@ -8,25 +8,10 @@ class MangaDexScraper(MangaScraper):
         self.api_url = "https://api.mangadex.org"
         self.uploads_url = "https://uploads.mangadex.org"
 
-    async def _fetch_json(self, url, params=None):
-        session = await self.get_session()
-        for _ in range(3):
-            try:
-                async with session.get(url, params=params, timeout=10) as response:
-                    if response.status == 429: # Rate limited
-                        await asyncio.sleep(2)
-                        continue
-                    response.raise_for_status()
-                    return await response.json()
-            except Exception as e:
-                print(f"MangaDex Error {url}: {e}")
-                await asyncio.sleep(1)
-        return None
-
     async def search_manga(self, query: str):
         url = f"{self.api_url}/manga"
         params = {"title": query, "includes[]": "cover_art", "limit": 15}
-        data = await self._fetch_json(url, params)
+        data = await self.fetch_with_retry(url, params=params)
         if not data or 'data' not in data: return []
 
         results = []
@@ -53,7 +38,7 @@ class MangaDexScraper(MangaScraper):
     async def get_manga_details(self, manga_id: str):
         url = f"{self.api_url}/manga/{manga_id}"
         params = {"includes[]": "cover_art"}
-        data = await self._fetch_json(url, params)
+        data = await self.fetch_with_retry(url, params=params)
         if not data or 'data' not in data: return None
 
         item = data['data']
@@ -69,7 +54,7 @@ class MangaDexScraper(MangaScraper):
         # Fetch English chapters
         feed_url = f"{self.api_url}/manga/{manga_id}/feed"
         feed_params = {"translatedLanguage[]": ["en"], "order[chapter]": "desc", "limit": 100}
-        feed_data = await self._fetch_json(feed_url, feed_params)
+        feed_data = await self.fetch_with_retry(feed_url, params=feed_params)
 
         chapters = []
         if feed_data and 'data' in feed_data:
@@ -95,7 +80,7 @@ class MangaDexScraper(MangaScraper):
         md_chap_id = chapter_id.split('/')[-1] if '/' in chapter_id else chapter_id
 
         url = f"{self.api_url}/at-home/server/{md_chap_id}"
-        data = await self._fetch_json(url)
+        data = await self.fetch_with_retry(url)
         if not data or 'chapter' not in data: return []
 
         base = data['baseUrl']

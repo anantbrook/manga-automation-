@@ -13,28 +13,9 @@ class AquaReaderScraper(MangaScraper):
         }
         self.base_url = "https://aquareader.net"
 
-    async def _fetch(self, url, is_json=False):
-        session = await self.get_session()
-        # Exponential backoff + Proxy rotation
-        for attempt in range(4):
-            proxy = self.get_proxy()
-            try:
-                async with session.get(url, headers=self.headers, proxy=proxy, timeout=15) as response:
-                    if response.status in [429, 503]:
-                        await asyncio.sleep(2 ** attempt)
-                        continue
-                    response.raise_for_status()
-                    if is_json:
-                        return await response.json()
-                    return await response.text()
-            except Exception as e:
-                print(f"Fetch error {url} (attempt {attempt+1}, proxy: {proxy}): {e}")
-                await asyncio.sleep(2 ** attempt)
-        return None
-
     async def search_manga(self, query: str):
         url = f"{self.base_url}/?s={query}&post_type=wp-manga"
-        html = await self._fetch(url)
+        html = await self.fetch_with_retry(url, headers=self.headers, is_json=False)
         if not html: return []
 
         soup = BeautifulSoup(html, 'html.parser')
@@ -63,7 +44,7 @@ class AquaReaderScraper(MangaScraper):
 
     async def get_manga_details(self, manga_id: str):
         url = f"{self.base_url}/manga/{manga_id}/"
-        html = await self._fetch(url)
+        html = await self.fetch_with_retry(url, headers=self.headers, is_json=False)
         if not html: return None
 
         soup = BeautifulSoup(html, 'html.parser')
@@ -100,7 +81,7 @@ class AquaReaderScraper(MangaScraper):
 
     async def get_chapter_images(self, manga_id: str, chapter_id: str):
         url = f"{self.base_url}/manga/{manga_id}/{chapter_id}/"
-        html = await self._fetch(url)
+        html = await self.fetch_with_retry(url, headers=self.headers, is_json=False)
         if not html: return []
 
         soup = BeautifulSoup(html, 'html.parser')
