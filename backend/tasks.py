@@ -23,6 +23,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 3600.0, # seconds (1 hour)
+    },
 }
 celery.conf.timezone = 'UTC'
 
@@ -56,18 +60,66 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                existing_chapters = set(c.id for c in Chapter.query.filter_by(manga_id=manga_id).all())
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapters:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_chapters.add(chap_id)
 
                 db.session.commit()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_check_all_updates())
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job to globally fetch latest updates from all scrapers
+    to organically grow the database.
+    """
+    from app import create_app
+    from models import db, Manga, Chapter
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_updates():
+            from scrapers import scrapers
+            for source, scraper in scrapers.items():
+                try:
+                    latest = await scraper.get_latest_updates()
+                    for item in latest:
+                        manga_id = item['id']
+                        manga = db.session.get(Manga, manga_id)
+
+                        if not manga:
+                            manga = Manga(id=manga_id, title=item['title'], cover_url=item.get('cover_url'), source=source)
+                            db.session.add(manga)
+                            db.session.commit() # commit manga first to avoid FK constraint error
+
+                        # fetch detailed chapters
+                        details = await scraper.get_manga_details(manga_id)
+                        if details and 'chapters' in details:
+                            existing_chapters = set(c.id for c in Chapter.query.filter_by(manga_id=manga_id).all())
+                            for chap in details['chapters']:
+                                chap_id = chap['id']
+                                if chap_id not in existing_chapters:
+                                    chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
+                                    db.session.add(chapter)
+                                    existing_chapters.add(chap_id)
+                            db.session.commit()
+                except Exception as e:
+                    logger.exception("Failed to fetch latest updates for source %s: %s", source, e)
+
+                await asyncio.sleep(2) # Non-blocking sleep
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_updates())
+
 
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):
