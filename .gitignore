@@ -1,0 +1,13 @@
+__pycache__/
+venv/
+test-results/
+*.py[cod]
+*$py.class
+*.orig
+*.db
+*.sqlite3
+instance/
+.env
+node_modules/
+dist/
+build/
