@@ -31,7 +31,8 @@ class MangaDexScraper(MangaScraper):
 
         results = []
         for item in data['data']:
-            title = item['attributes']['title'].get('en') or list(item['attributes']['title'].values())[0]
+            title_dict = item['attributes']['title']
+            title = title_dict.get('en') or (list(title_dict.values())[0] if title_dict else "Unknown Title")
             manga_id = item['id']
 
             cover_filename = None
@@ -106,3 +107,31 @@ class MangaDexScraper(MangaScraper):
             images.append(f"{base}/data/{hash_val}/{filename}")
 
         return images
+
+    async def get_latest_updates(self):
+        url = f"{self.api_url}/manga"
+        params = {"order[updatedAt]": "desc", "limit": 15, "includes[]": "cover_art", "hasAvailableChapters": "true"}
+        data = await self._fetch_json(url, params)
+        if not data or 'data' not in data: return []
+
+        results = []
+        for item in data['data']:
+            title_dict = item['attributes']['title']
+            title = title_dict.get('en') or (list(title_dict.values())[0] if title_dict else "Unknown Title")
+            manga_id = item['id']
+
+            cover_filename = None
+            for rel in item['relationships']:
+                if rel['type'] == 'cover_art' and 'attributes' in rel:
+                    cover_filename = rel['attributes'].get('fileName')
+
+            cover_url = f"{self.uploads_url}/covers/{manga_id}/{cover_filename}" if cover_filename else None
+
+            results.append({
+                'id': manga_id,
+                'title': title,
+                'url': f"https://mangadex.org/title/{manga_id}",
+                'cover_url': cover_url,
+                'source': 'mangadex'
+            })
+        return results
