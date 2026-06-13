@@ -1,33 +1,68 @@
-from flask import Blueprint, render_template_string, request, jsonify
+from flask import Blueprint, render_template_string, request, jsonify, make_response, redirect, url_for, flash
 from models import db, Manga, Chapter
 import os
+import urllib.parse
+from markupsafe import escape
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 def is_authorized():
-    token = request.args.get('token')
+    token = request.cookies.get('admin_token')
     try:
         return token == os.environ['ADMIN_TOKEN']
     except KeyError:
         return False
 
+@admin_bp.route('/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        token = request.form.get('token')
+        try:
+            if token == os.environ['ADMIN_TOKEN']:
+                resp = make_response(redirect(url_for('admin.admin_panel')))
+                resp.set_cookie('admin_token', token, httponly=True, secure=False) # In production secure=True
+                return resp
+            else:
+                return "Invalid token", 401
+        except KeyError:
+            return "Server misconfiguration", 500
+
+    html = '''
+    <html>
+    <head><title>Admin Login</title></head>
+    <body>
+        <h2>Admin Login</h2>
+        <form action="/admin/login" method="post">
+            <input type="password" name="token" placeholder="Admin Token" required>
+            <button type="submit">Login</button>
+        </form>
+    </body>
+    </html>
+    '''
+    return render_template_string(html)
+
 @admin_bp.route('/')
 def admin_panel():
     if not is_authorized():
-        return "Unauthorized", 401
+        return redirect(url_for('admin.admin_login'))
 
     mangas = Manga.query.all()
     chapters = Chapter.query.count()
 
+    message = request.args.get('message', '')
+
     html = '''
     <html>
-    <head><title>MangaFire PRO Admin Panel</title><style>body{font-family:sans-serif; background:#f4f4f4; padding:20px;} table{width:100%; border-collapse:collapse; margin-top:20px;} th,td{padding:10px; border:1px solid #ddd; text-align:left;} th{background:#333;color:white;} .card{background:white; padding:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:20px;} input, select, button{padding:10px; margin-right:10px; border:1px solid #ccc; border-radius:4px;}</style></head>
+    <head><title>MangaFire PRO Admin Panel</title><style>body{font-family:sans-serif; background:#f4f4f4; padding:20px;} table{width:100%; border-collapse:collapse; margin-top:20px;} th,td{padding:10px; border:1px solid #ddd; text-align:left;} th{background:#333;color:white;} .card{background:white; padding:20px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); margin-bottom:20px;} input, select, button{padding:10px; margin-right:10px; border:1px solid #ccc; border-radius:4px;} .message {background: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; border-radius: 4px; margin-bottom: 20px;}</style></head>
     <body>
         <h1>🔥 MangaFire PRO Admin</h1>
+        {% if message %}
+            <div class="message">{{ message }}</div>
+        {% endif %}
 
         <div class="card">
             <h3>Add Manga (Trigger Celery Job)</h3>
-            <form action="/admin/add?token={{ request.args.get('token') }}" method="post">
+            <form action="/admin/add" method="post">
                 <select name="source">
                     <option value="mangadex">MangaDex</option>
                     <option value="aquareader">AquaReader</option>
@@ -52,7 +87,7 @@ def admin_panel():
                 <td>{{ m.title }}</td>
                 <td>{{ m.last_updated }}</td>
                 <td>
-                    <form action="/admin/delete/{{m.id}}?token={{ request.args.get('token') }}" method="post" style="display:inline;">
+                    <form action="/admin/delete/{{m.id}}" method="post" style="display:inline;">
                         <button type="submit" style="color:red;">Delete</button>
                     </form>
                 </td>
@@ -62,7 +97,7 @@ def admin_panel():
     </body>
     </html>
     '''
-    return render_template_string(html, mangas=mangas, chapter_count=chapters, request=request)
+    return render_template_string(html, mangas=mangas, chapter_count=chapters, message=message)
 
 @admin_bp.route('/add', methods=['POST'])
 async def admin_add():
@@ -107,7 +142,9 @@ async def admin_add():
 
     db.session.commit()
 
-    return f"<script>alert('Manga {manga_id} metadata saved and chapter downloads queued in Celery.'); window.location.href='/admin?token={request.args.get('token')}';</script>"
+    safe_manga_id = escape(manga_id)
+    msg = f"Manga {safe_manga_id} metadata saved and chapter downloads queued in Celery."
+    return redirect(url_for('admin.admin_panel', message=msg))
 
 @admin_bp.route('/delete/<path:manga_id>', methods=['POST'])
 def admin_delete(manga_id):
@@ -120,4 +157,6 @@ def admin_delete(manga_id):
         db.session.delete(manga)
         db.session.commit()
 
-    return f"<script>alert('Manga {manga_id} and its chapters removed.'); window.location.href='/admin?token={request.args.get('token')}';</script>"
+    safe_manga_id = escape(manga_id)
+    msg = f"Manga {safe_manga_id} and its chapters removed."
+    return redirect(url_for('admin.admin_panel', message=msg))
