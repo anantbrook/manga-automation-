@@ -1,19 +1,17 @@
 import os
-import asyncio
 from dotenv import load_dotenv
+load_dotenv()
+import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import time
+from models import db, Manga, Chapter, Subscription
 from scrapers import get_scraper
-from models import db, Manga, Subscription, Chapter
 from flask import Flask
 
-load_dotenv()
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 
-# Create a minimal app context for the bot to interact with the database
+# Create a minimal flask app context for DB operations
 app = Flask(__name__)
-# Read the same DATABASE_URL as app.py (Postgres via Docker, or sqlite locally)
 db_url = os.environ.get('DATABASE_URL', 'sqlite:///manga.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -201,13 +199,16 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
                     continue
 
                 # Find new chapters
+                existing_chapters_objs = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_chapters_ids = set([c.id for c in existing_chapters_objs])
+
                 new_chapters = []
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_chapters_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_chapters_ids.add(chap['id'])
 
                 if new_chapters:
                     db.session.commit()
@@ -223,7 +224,8 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
                             print(f"Failed to send update to {sub.chat_id}: {e}")
 
     except Exception as e:
-        print(f"Error in update job: {e}")
+        import logging
+        logging.getLogger(__name__).exception(f"Error in update job: {e}")
 
 def run_bot():
     if not TELEGRAM_BOT_TOKEN:

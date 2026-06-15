@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangaFire PRO Admin Panel</title>
+    <style>
+        body { font-family: sans-serif; background: #0a0a0c; color: #f0f0f5; padding: 20px; }
+        h1, h2, h3 { color: #ff3300; font-family: 'Bebas Neue', cursive; font-weight: normal; letter-spacing: 1px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #141418; }
+        th, td { padding: 10px; border: 1px solid #2a2a35; text-align: left; }
+        th { background: #1a1a24; color: #ff3300; }
+        .card { background: #141418; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(255, 51, 0, 0.1); margin-bottom: 20px; border: 1px solid #2a2a35; }
+        input, select, button { padding: 10px; margin-right: 10px; border: 1px solid #2a2a35; border-radius: 4px; background: #0a0a0c; color: #f0f0f5; }
+        button { background: #ff3300; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { background: #e62e00; box-shadow: 0 0 10px rgba(255, 51, 0, 0.5); }
+        .msg { padding: 10px; background: rgba(0, 255, 0, 0.1); border: 1px solid #00ff00; color: #00ff00; margin-bottom: 20px; border-radius: 4px; }
+        a.logout { color: #8a8a9e; text-decoration: none; float: right; margin-top: 15px; }
+        a.logout:hover { color: #ff3300; }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('admin.admin_logout') }}" class="logout">Logout</a>
+    <h1>🔥 MangaFire PRO Admin</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="msg">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h3>Add Manga (Trigger Celery Job)</h3>
+        <form action="{{ url_for('admin.admin_add') }}" method="post">
+            <select name="source">
+                <option value="mangadex">MangaDex</option>
+                <option value="aquareader">AquaReader</option>
+            </select>
+            <input type="text" name="manga_id" placeholder="Enter Manga ID/Slug" required style="width:300px;">
+            <button type="submit">Fetch & Cache Everything</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <p>Total Cached Manga: <b>{{ mangas|length }}</b></p>
+        <p>Total Cached Chapters: <b>{{ chapter_count }}</b></p>
+    </div>
+
+    <h2>Cached Manga Database</h2>
+    <table>
+        <tr>
+            <th>Source</th>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Last Updated</th>
+            <th>Action</th>
+        </tr>
+        {% for m in mangas %}
+        <tr>
+            <td>{{ m.source }}</td>
+            <td>{{ m.id }}</td>
+            <td>{{ m.title }}</td>
+            <td>{{ m.last_updated }}</td>
+            <td>
+                <form action="{{ url_for('admin.admin_delete', manga_id=m.id) }}" method="post" style="display:inline;">
+                    <button type="submit" style="background: transparent; color: #ff3333; border: 1px solid #ff3333; padding: 5px 10px;">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

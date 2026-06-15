@@ -56,18 +56,23 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                # Bulk-fetch existing chapters for O(1) lookup
+                existing_chapters_objs = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_chapters_ids = set([c.id for c in existing_chapters_objs])
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapters_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_chapters_ids.add(chap_id) # Add to set to prevent IntegrityError if duplicate in source
 
                 db.session.commit()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_check_all_updates())
+        loop.close()
 
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):
@@ -110,4 +115,5 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
                     logger.exception("Failed to download %s", img_url)
 
     loop.run_until_complete(_download_all())
+    loop.close()
     return {'status': 'success', 'path': base_dir, 'count': len(images)}
