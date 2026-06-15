@@ -13,6 +13,7 @@ def create_app():
     db_url = os.environ.get('DATABASE_URL', 'sqlite:///manga.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('JWT_SECRET', 'dev-secret')
 
     db.init_app(app)
 

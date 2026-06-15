@@ -4,9 +4,9 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: mangafire
-      POSTGRES_PASSWORD: mangapassword
-      POSTGRES_DB: mangafire_db
+      POSTGRES_USER: ${POSTGRES_USER:-mangafire}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mangapassword}
+      POSTGRES_DB: ${POSTGRES_DB:-mangafire_db}
     ports:
       - "5432:5432"
     volumes:
@@ -27,7 +27,7 @@ services:
     environment:
       - FLASK_APP=app.py
       - FLASK_DEBUG=1
-      - DATABASE_URL=postgresql://mangafire:mangapassword@db:5432/mangafire_db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://mangafire:mangapassword@db:5432/mangafire_db}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -44,7 +44,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgresql://mangafire:mangapassword@db:5432/mangafire_db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://mangafire:mangapassword@db:5432/mangafire_db}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
@@ -59,7 +59,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgresql://mangafire:mangapassword@db:5432/mangafire_db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://mangafire:mangapassword@db:5432/mangafire_db}
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
@@ -73,7 +73,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=postgresql://mangafire:mangapassword@db:5432/mangafire_db
+      - DATABASE_URL=${DATABASE_URL:-postgresql://mangafire:mangapassword@db:5432/mangafire_db}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     depends_on:
       - db
