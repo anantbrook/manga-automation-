@@ -12,11 +12,21 @@ import zipfile
 import io
 import logging
 import requests
+import json
+import redis
 from utils import get_safe_manga_dir
 
 logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+# Setup Redis client
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+try:
+    redis_client = redis.from_url(REDIS_URL)
+except Exception as e:
+    logger.error(f"Failed to initialize Redis: {e}")
+    redis_client = None
 
 @api_bp.route('/search')
 async def api_search():
@@ -24,8 +34,24 @@ async def api_search():
     source = request.args.get('source', 'mangadex')
     if not q: return jsonify([])
 
+    cache_key = f"search:{source}:{q}"
+    if redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.warning(f"Redis get error: {e}")
+
     scraper = get_scraper(source)
     results = await scraper.search_manga(q)
+
+    if redis_client and results:
+        try:
+            redis_client.setex(cache_key, 3600, json.dumps(results)) # Cache for 1 hour
+        except redis.RedisError as e:
+            logger.warning(f"Redis set error: {e}")
+
     return jsonify(results)
 
 @api_bp.route('/home')
@@ -51,12 +77,22 @@ def api_home():
 
 @api_bp.route('/manga/<source>/<path:manga_id>')
 async def api_manga_details(source, manga_id):
-    manga = db.session.get(Manga, manga_id)
+    cache_key = f"manga:{source}:{manga_id}"
     force_update = request.args.get('force', 'false').lower() == 'true'
 
+    # Increment view count independently of cache
+    manga = db.session.get(Manga, manga_id)
     if manga:
         manga.view_count = (manga.view_count or 0) + 1
         db.session.commit()
+
+    if not force_update and redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.warning(f"Redis get error: {e}")
 
     cache_expired = False
     if manga and manga.last_updated:
@@ -69,14 +105,20 @@ async def api_manga_details(source, manga_id):
     if manga and not force_update and manga.synopsis and not cache_expired:
         chapters = Chapter.query.filter_by(manga_id=manga_id).all()
         if chapters:
-            return jsonify({
+            result = {
                 'id': manga.id,
                 'title': manga.title,
                 'cover_url': manga.cover_url,
                 'synopsis': manga.synopsis,
                 'source': manga.source,
                 'chapters': [{'id': c.id.split('/')[-1], 'title': c.title, 'url': c.url} for c in chapters]
-            })
+            }
+            if redis_client:
+                try:
+                    redis_client.setex(cache_key, 3600, json.dumps(result))
+                except redis.RedisError as e:
+                    logger.warning(f"Redis set error: {e}")
+            return jsonify(result)
 
     scraper = get_scraper(source)
     details = await scraper.get_manga_details(manga_id)
@@ -107,6 +149,13 @@ async def api_manga_details(source, manga_id):
     db.session.commit()
 
     details['chapters'] = [{'id': c['id'].split('/')[-1], 'title': c['title'], 'url': c['url']} for c in details['chapters']]
+
+    if redis_client:
+        try:
+            redis_client.setex(cache_key, 3600, json.dumps(details))
+        except redis.RedisError as e:
+            logger.warning(f"Redis set error: {e}")
+
     return jsonify(details)
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
@@ -149,14 +198,14 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.net', 'aquareader.org', 'wp.com', 'mangadex.org', 'mangadex.network', 'uploads.mangadex.org']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
+        "Referer": "https://aquareader.org/" if 'aquareader' in url else "https://mangadex.org/"
     }
 
     try:
