@@ -23,8 +23,61 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 1800.0, # seconds (30 mins)
+    },
 }
 celery.conf.timezone = 'UTC'
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job to globally fetch latest manga updates to automatically grow the DB.
+    """
+    from app import create_app
+    from models import db, Manga, Chapter
+
+    app = create_app()
+    with app.app_context():
+        # Iterate over all registered scrapers to get latest updates
+        from scrapers import scrapers
+
+        async def _fetch_updates():
+            for source_name, scraper in scrapers.items():
+                updates = await scraper.get_latest_updates()
+                if not updates:
+                    continue
+
+                for u in updates:
+                    manga_id = u['manga_id']
+                    chap_info = u['chapter']
+
+                    # Try to get manga. If it doesn't exist, we scrape details
+                    manga = db.session.get(Manga, manga_id)
+                    if not manga:
+                        details = await scraper.get_manga_details(manga_id)
+                        await asyncio.sleep(2)
+                        if details:
+                            manga = Manga(id=details['id'], title=details['title'], cover_url=details['cover_url'], source=source_name, synopsis=details.get('synopsis'))
+                            db.session.add(manga)
+
+                    if manga:
+                        chapter = db.session.get(Chapter, chap_info['id'])
+                        if not chapter:
+                            chapter = Chapter(id=chap_info['id'], manga_id=manga_id, title=chap_info['title'], url=chap_info['url'], number=0)
+                            db.session.add(chapter)
+                            manga.last_updated = db.func.now()
+
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    logger.exception(f"Error saving global updates for {source_name}: {e}")
+                    db.session.rollback()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_updates())
 
 @celery.task
 def check_manga_updates_job():
@@ -56,12 +109,16 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                # Bulk fetch existing chapters to avoid N+1 queries
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_ids.add(chap_id) # Track dynamically to prevent IntegrityError if details contains duplicates
 
                 db.session.commit()
 

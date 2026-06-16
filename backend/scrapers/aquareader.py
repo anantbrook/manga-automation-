@@ -9,32 +9,13 @@ class AquaReaderScraper(MangaScraper):
         super().__init__()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Referer": "https://aquareader.net/"
+            "Referer": "https://aquareader.org/"
         }
-        self.base_url = "https://aquareader.net"
-
-    async def _fetch(self, url, is_json=False):
-        session = await self.get_session()
-        # Exponential backoff + Proxy rotation
-        for attempt in range(4):
-            proxy = self.get_proxy()
-            try:
-                async with session.get(url, headers=self.headers, proxy=proxy, timeout=15) as response:
-                    if response.status in [429, 503]:
-                        await asyncio.sleep(2 ** attempt)
-                        continue
-                    response.raise_for_status()
-                    if is_json:
-                        return await response.json()
-                    return await response.text()
-            except Exception as e:
-                print(f"Fetch error {url} (attempt {attempt+1}, proxy: {proxy}): {e}")
-                await asyncio.sleep(2 ** attempt)
-        return None
+        self.base_url = "https://aquareader.org"
 
     async def search_manga(self, query: str):
         url = f"{self.base_url}/?s={query}&post_type=wp-manga"
-        html = await self._fetch(url)
+        html = await self.fetch_with_retry(url, headers=self.headers, is_json=False)
         if not html: return []
 
         soup = BeautifulSoup(html, 'html.parser')
@@ -63,7 +44,7 @@ class AquaReaderScraper(MangaScraper):
 
     async def get_manga_details(self, manga_id: str):
         url = f"{self.base_url}/manga/{manga_id}/"
-        html = await self._fetch(url)
+        html = await self.fetch_with_retry(url, headers=self.headers, is_json=False)
         if not html: return None
 
         soup = BeautifulSoup(html, 'html.parser')
@@ -100,7 +81,7 @@ class AquaReaderScraper(MangaScraper):
 
     async def get_chapter_images(self, manga_id: str, chapter_id: str):
         url = f"{self.base_url}/manga/{manga_id}/{chapter_id}/"
-        html = await self._fetch(url)
+        html = await self.fetch_with_retry(url, headers=self.headers, is_json=False)
         if not html: return []
 
         soup = BeautifulSoup(html, 'html.parser')
@@ -109,3 +90,7 @@ class AquaReaderScraper(MangaScraper):
             img_url = img.get('data-src') or img.get('src')
             if img_url: images.append(img_url.strip())
         return images
+
+    async def get_latest_updates(self) -> list:
+        # AquaReader returns 403 in local dev, avoid breaking background tasks
+        return []
