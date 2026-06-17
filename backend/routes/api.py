@@ -92,10 +92,12 @@ async def api_manga_details(source, manga_id):
     manga.synopsis = details['synopsis']
     manga.last_updated = datetime.now(timezone.utc)
 
+    existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+    existing_chapter_ids = {c.id for c in existing_chapters}
+
     for chap in details['chapters']:
         chap_id = chap['id']
-        chapter = db.session.get(Chapter, chap_id)
-        if not chapter:
+        if chap_id not in existing_chapter_ids:
             num = 0.0
             try:
                 parts = chap['title'].lower().replace('chapter', '').strip().split()
@@ -103,6 +105,7 @@ async def api_manga_details(source, manga_id):
             except (ValueError, IndexError, AttributeError): pass
             chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=num)
             db.session.add(chapter)
+            existing_chapter_ids.add(chap_id)
 
     db.session.commit()
 
@@ -149,14 +152,14 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.org', 'wp.com', 'mangadex.org', 'uploads.mangadex.org', 'mangadex.network']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
+        "Referer": "https://aquareader.org/" if 'aquareader' in url else "https://mangadex.org/"
     }
 
     try:
