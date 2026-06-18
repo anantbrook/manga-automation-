@@ -202,15 +202,27 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+                chapter_ids = [chap['id'] for chap in details['chapters']]
+                existing_chapters = Chapter.query.filter(Chapter.id.in_(chapter_ids)).all() if chapter_ids else []
+                existing_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
-                        chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    chap_id = chap['id']
+                    if chap_id not in existing_ids:
+                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_ids.add(chap_id) # Prevent IntegrityError
 
                 if new_chapters:
                     db.session.commit()
+                    # Invalidate Redis cache
+                    import redis, os
+                    try:
+                        redis_client = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
+                        redis_client.delete(f"manga:mangadex:{manga_id}")
+                    except Exception as e:
+                        pass
                     # Notify subscribers
                     manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
                     for sub in manga_subs:

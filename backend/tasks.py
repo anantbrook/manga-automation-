@@ -56,14 +56,27 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                chapter_ids = [chap['id'] for chap in details['chapters']]
+                existing_chapters = Chapter.query.filter(Chapter.id.in_(chapter_ids)).all() if chapter_ids else []
+                existing_ids = {c.id for c in existing_chapters}
+
+                new_chapters = False
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_ids.add(chap_id) # Prevent IntegrityError
+                        new_chapters = True
 
                 db.session.commit()
+                if new_chapters:
+                    import redis, os
+                    try:
+                        redis_client = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
+                        redis_client.delete(f"manga:mangadex:{manga_id}")
+                    except Exception as e:
+                        pass
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
