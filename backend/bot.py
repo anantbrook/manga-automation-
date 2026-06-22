@@ -202,12 +202,17 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+                chapter_ids = [c['id'] for c in details['chapters']]
+                existing_chapters = Chapter.query.filter(Chapter.id.in_(chapter_ids)).all()
+                existing_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
-                        chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    chap_id = chap['id']
+                    if chap_id not in existing_ids:
+                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_ids.add(chap_id) # Prevent IntegrityError
 
                 if new_chapters:
                     db.session.commit()
