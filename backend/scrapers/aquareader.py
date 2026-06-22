@@ -109,3 +109,8 @@ class AquaReaderScraper(MangaScraper):
             img_url = img.get('data-src') or img.get('src')
             if img_url: images.append(img_url.strip())
         return images
+
+    async def get_latest_updates(self):
+        # AquaReader scraper currently returns 403 Forbidden errors in the local development environment.
+        # To avoid breaking Celery background tasks, its get_latest_updates implementation returns an empty list [] locally.
+        return []
