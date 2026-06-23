@@ -200,13 +200,18 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
                 if not details:
                     continue
 
-                # Find new chapters
+                # Find new chapters using a set for O(1) bulk lookup
+                existing_chapters = set(db.session.execute(
+                    db.select(Chapter.id).where(Chapter.manga_id == manga_id)
+                ).scalars().all())
+
                 new_chapters = []
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
-                        chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    chap_id = chap['id']
+                    if chap_id not in existing_chapters:
+                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
+                        existing_chapters.add(chap_id)
                         new_chapters.append(chap)
 
                 if new_chapters:
