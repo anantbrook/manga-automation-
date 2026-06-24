@@ -20,9 +20,9 @@ class AquaReaderScraper(MangaScraper):
     def __init__(self):
         self.HEADERS = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Referer": "https://aquareader.net/"
+            "Referer": "https://aquareader.org/"
         }
-        self.BASE_URL = "https://aquareader.net"
+        self.BASE_URL = "https://aquareader.org"
 
     def search_manga(self, query):
         url = f"{self.BASE_URL}/?s={query}&post_type=wp-manga"
