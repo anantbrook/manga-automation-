@@ -23,8 +23,46 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 7200.0, # seconds (2 hours)
+    }
 }
 celery.conf.timezone = 'UTC'
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Organically grows the database by fetching latest global updates from scrapers.
+    """
+    from app import create_app
+    from models import db, Manga
+    import time
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_global():
+            for source in ['mangadex', 'aquareader']:
+                scraper = get_scraper(source)
+                latest_manga = await scraper.get_latest_updates()
+                await asyncio.sleep(2)
+
+                if not latest_manga: continue
+
+                # Fetch existing manga IDs to avoid N+1 and IntegrityError
+                existing_mangas = {m.id for m in Manga.query.filter_by(source=source).all()}
+
+                for item in latest_manga:
+                    if item['id'] not in existing_mangas:
+                        new_manga = Manga(id=item['id'], title=item['title'], source=source, cover_url=item['cover_url'])
+                        db.session.add(new_manga)
+                        existing_mangas.add(item['id'])
+
+                db.session.commit()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_global())
 
 @celery.task
 def check_manga_updates_job():
@@ -56,12 +94,15 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                # Fetch all existing chapters for this manga in one query
+                existing_chapters = {c.id for c in Chapter.query.filter_by(manga_id=manga_id).all()}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapters:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_chapters.add(chap_id) # Update tracking set
 
                 db.session.commit()
 
