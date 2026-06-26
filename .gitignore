@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.orig
+*.db
+*.sqlite3
+venv/
+test-results/
