@@ -23,8 +23,69 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-job': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 1800.0, # seconds (30 mins)
+    },
 }
 celery.conf.timezone = 'UTC'
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job managed by Celery Beat.
+    Crawls for new manga using the `get_latest_updates` method on scrapers
+    (MangaDex, AquaReader) to organically grow the database.
+    """
+    from app import create_app
+    from models import db, Manga, Chapter
+    import redis
+
+    app = create_app()
+    with app.app_context():
+        REDIS_URL = os.environ.get('REDIS_URL')
+        redis_client = None
+        if REDIS_URL:
+            try:
+                redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis in task: {e}")
+
+        async def _fetch_global_updates():
+            from scrapers import scrapers
+            for source, scraper in scrapers.items():
+                try:
+                    latest_updates = await scraper.get_latest_updates()
+                    for item in latest_updates:
+                        manga_id = item['id']
+                        title = item['title']
+
+                        existing_manga = db.session.get(Manga, manga_id)
+                        if not existing_manga:
+                            new_manga = Manga(
+                                id=manga_id,
+                                title=title,
+                                source=source,
+                                cover_url=item.get('cover_url'),
+                                synopsis=item.get('synopsis')
+                            )
+                            db.session.add(new_manga)
+
+                        db.session.commit()
+
+                        # Invalidate Redis cache if available
+                        if redis_client:
+                            try:
+                                redis_client.delete(f"manga:{source}:{manga_id}")
+                            except redis.RedisError:
+                                pass
+                except Exception as e:
+                    logger.error(f"Error fetching global updates for {source}: {e}")
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_global_updates())
+
 
 @celery.task
 def check_manga_updates_job():
@@ -45,6 +106,15 @@ def check_manga_updates_job():
 
         scraper = get_scraper('mangadex')
 
+        import redis
+        REDIS_URL = os.environ.get('REDIS_URL')
+        redis_client = None
+        if REDIS_URL:
+            try:
+                redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+            except Exception as e:
+                logger.error(f"Failed to initialize Redis in task: {e}")
+
         async def _check_all_updates():
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
@@ -64,6 +134,12 @@ def check_manga_updates_job():
                         db.session.add(chapter)
 
                 db.session.commit()
+
+                if redis_client:
+                    try:
+                        redis_client.delete(f"manga:mangadex:{manga_id}")
+                    except redis.RedisError:
+                        pass
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

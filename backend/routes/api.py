@@ -13,10 +13,20 @@ import io
 import logging
 import requests
 from utils import get_safe_manga_dir
+import redis
+import json
 
 logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+REDIS_URL = os.environ.get('REDIS_URL')
+redis_client = None
+if REDIS_URL:
+    try:
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis: {e}")
 
 @api_bp.route('/search')
 async def api_search():
@@ -24,12 +34,37 @@ async def api_search():
     source = request.args.get('source', 'mangadex')
     if not q: return jsonify([])
 
+    cache_key = f"search:{source}:{q}"
+    if redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.error(f"Redis get error: {e}")
+
     scraper = get_scraper(source)
     results = await scraper.search_manga(q)
+
+    if redis_client and results:
+        try:
+            redis_client.setex(cache_key, 3600, json.dumps(results)) # Cache for 1 hour
+        except redis.RedisError as e:
+            logger.error(f"Redis set error: {e}")
+
     return jsonify(results)
 
 @api_bp.route('/home')
 def api_home():
+    cache_key = "home_page_data"
+    if redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.error(f"Redis get error: {e}")
+
     # Trending based on views
     trending = Manga.query.order_by(Manga.view_count.desc()).limit(10).all()
     # Latest updated
@@ -44,19 +79,36 @@ def api_home():
             'views': m.view_count
         }
 
-    return jsonify({
+    res_data = {
         'trending': [serialize(m) for m in trending],
         'latest': [serialize(m) for m in latest]
-    })
+    }
+
+    if redis_client:
+        try:
+            redis_client.setex(cache_key, 300, json.dumps(res_data)) # Cache for 5 mins
+        except redis.RedisError as e:
+            logger.error(f"Redis set error: {e}")
+
+    return jsonify(res_data)
 
 @api_bp.route('/manga/<source>/<path:manga_id>')
 async def api_manga_details(source, manga_id):
-    manga = db.session.get(Manga, manga_id)
     force_update = request.args.get('force', 'false').lower() == 'true'
+    cache_key = f"manga:{source}:{manga_id}"
 
+    manga = db.session.get(Manga, manga_id)
     if manga:
         manga.view_count = (manga.view_count or 0) + 1
         db.session.commit()
+
+    if not force_update and redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.error(f"Redis get error: {e}")
 
     cache_expired = False
     if manga and manga.last_updated:
@@ -69,14 +121,20 @@ async def api_manga_details(source, manga_id):
     if manga and not force_update and manga.synopsis and not cache_expired:
         chapters = Chapter.query.filter_by(manga_id=manga_id).all()
         if chapters:
-            return jsonify({
+            res_data = {
                 'id': manga.id,
                 'title': manga.title,
                 'cover_url': manga.cover_url,
                 'synopsis': manga.synopsis,
                 'source': manga.source,
                 'chapters': [{'id': c.id.split('/')[-1], 'title': c.title, 'url': c.url} for c in chapters]
-            })
+            }
+            if redis_client:
+                try:
+                    redis_client.setex(cache_key, 21600, json.dumps(res_data)) # Cache for 6 hours
+                except redis.RedisError as e:
+                    logger.error(f"Redis set error: {e}")
+            return jsonify(res_data)
 
     scraper = get_scraper(source)
     details = await scraper.get_manga_details(manga_id)
@@ -107,6 +165,13 @@ async def api_manga_details(source, manga_id):
     db.session.commit()
 
     details['chapters'] = [{'id': c['id'].split('/')[-1], 'title': c['title'], 'url': c['url']} for c in details['chapters']]
+
+    if redis_client:
+        try:
+            redis_client.setex(cache_key, 21600, json.dumps(details)) # Cache for 6 hours
+        except redis.RedisError as e:
+            logger.error(f"Redis set error: {e}")
+
     return jsonify(details)
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')

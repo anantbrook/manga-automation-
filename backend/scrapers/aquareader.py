@@ -14,23 +14,12 @@ class AquaReaderScraper(MangaScraper):
         self.base_url = "https://aquareader.net"
 
     async def _fetch(self, url, is_json=False):
-        session = await self.get_session()
-        # Exponential backoff + Proxy rotation
-        for attempt in range(4):
-            proxy = self.get_proxy()
-            try:
-                async with session.get(url, headers=self.headers, proxy=proxy, timeout=15) as response:
-                    if response.status in [429, 503]:
-                        await asyncio.sleep(2 ** attempt)
-                        continue
-                    response.raise_for_status()
-                    if is_json:
-                        return await response.json()
-                    return await response.text()
-            except Exception as e:
-                print(f"Fetch error {url} (attempt {attempt+1}, proxy: {proxy}): {e}")
-                await asyncio.sleep(2 ** attempt)
-        return None
+        return await self.fetch_with_retry(url, headers=self.headers, is_json=is_json, max_attempts=4)
+
+    async def get_latest_updates(self) -> list:
+        # Returning empty list locally as mentioned in instructions
+        # AquaReader scraper currently returns 403 Forbidden errors in local dev
+        return []
 
     async def search_manga(self, query: str):
         url = f"{self.base_url}/?s={query}&post_type=wp-manga"
