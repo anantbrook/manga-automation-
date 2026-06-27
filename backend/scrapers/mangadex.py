@@ -9,19 +9,38 @@ class MangaDexScraper(MangaScraper):
         self.uploads_url = "https://uploads.mangadex.org"
 
     async def _fetch_json(self, url, params=None):
-        session = await self.get_session()
-        for _ in range(3):
-            try:
-                async with session.get(url, params=params, timeout=10) as response:
-                    if response.status == 429: # Rate limited
-                        await asyncio.sleep(2)
-                        continue
-                    response.raise_for_status()
-                    return await response.json()
-            except Exception as e:
-                print(f"MangaDex Error {url}: {e}")
-                await asyncio.sleep(1)
-        return None
+        return await self.fetch_with_retry(url, is_json=True, params=params, max_attempts=3)
+
+    async def get_latest_updates(self) -> list:
+        url = f"{self.api_url}/manga"
+        params = {
+            "includes[]": "cover_art",
+            "limit": 10,
+            "order[updatedAt]": "desc",
+            "hasAvailableChapters": "true"
+        }
+        data = await self._fetch_json(url, params)
+        if not data or 'data' not in data: return []
+
+        results = []
+        for item in data['data']:
+            title = item['attributes']['title'].get('en') or list(item['attributes']['title'].values())[0] if item['attributes']['title'] else "Unknown"
+            manga_id = item['id']
+            cover_filename = None
+            for rel in item['relationships']:
+                if rel['type'] == 'cover_art' and 'attributes' in rel:
+                    cover_filename = rel['attributes'].get('fileName')
+            cover_url = f"{self.uploads_url}/covers/{manga_id}/{cover_filename}" if cover_filename else None
+
+            results.append({
+                'id': manga_id,
+                'title': title,
+                'url': f"https://mangadex.org/title/{manga_id}",
+                'cover_url': cover_url,
+                'source': 'mangadex',
+                'synopsis': item['attributes']['description'].get('en', 'No synopsis available.') if item['attributes'].get('description') else 'No synopsis available.'
+            })
+        return results
 
     async def search_manga(self, query: str):
         url = f"{self.api_url}/manga"
