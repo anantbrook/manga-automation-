@@ -1,14 +1,16 @@
 import requests
 from bs4 import BeautifulSoup
+import asyncio
 
-url = "https://aquareader.net/?s=solo+leveling&post_type=wp-manga"
-headers = {"User-Agent": "Mozilla/5.0"}
-r = requests.get(url, headers=headers)
-soup = BeautifulSoup(r.text, 'html.parser')
+from scrapers.mangadex import MangaDexScraper
+import aiohttp
 
-items = soup.select('.c-tabs-item__content')
-for item in items[:2]:
-    title_el = item.select_one('.post-title h3 a')
-    if title_el:
-        print("Title:", title_el.text.strip())
-        print("Link:", title_el['href'])
+async def test_mangadex():
+    scraper = MangaDexScraper()
+    res = await scraper.search_manga("solo leveling")
+    print(res)
+    session = await scraper.get_session()
+    await session.close()
+
+if __name__ == "__main__":
+    asyncio.run(test_mangadex())
