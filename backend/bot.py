@@ -99,9 +99,13 @@ async def list_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=chat_id, text="You don't have any subscriptions.")
             return
 
+        manga_ids = [sub.manga_id for sub in subs]
+        mangas = db.session.query(Manga).filter(Manga.id.in_(manga_ids)).all()
+        manga_dict = {m.id: m for m in mangas}
+
         response = "📋 **Your Subscriptions:**\n\n"
         for sub in subs:
-            manga = db.session.get(Manga, sub.manga_id)
+            manga = manga_dict.get(sub.manga_id)
             title = manga.title if manga else sub.manga_id
             response += f"• {title} (`{sub.manga_id}`)\n"
 
@@ -188,10 +192,13 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
             subs = Subscription.query.all()
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
+            mangas = db.session.query(Manga).filter(Manga.id.in_(unique_manga_ids)).all()
+            manga_dict = {m.id: m for m in mangas}
+
             scraper = get_scraper('mangadex')
 
             for manga_id in unique_manga_ids:
-                manga_obj = db.session.get(Manga, manga_id)
+                manga_obj = manga_dict.get(manga_id)
                 details = await scraper.get_manga_details(manga_id)
 
                 # Sleep to respect rate limit without blocking loop
@@ -200,13 +207,17 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
                 if not details:
                     continue
 
+                chap_ids = [chap['id'] for chap in details['chapters']]
+                existing_chapters = db.session.query(Chapter).filter(Chapter.id.in_(chap_ids)).all()
+                existing_chap_ids = {c.id for c in existing_chapters}
+
                 # Find new chapters
                 new_chapters = []
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_chap_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
+                        existing_chap_ids.add(chap['id'])
                         new_chapters.append(chap)
 
                 if new_chapters:
@@ -214,7 +225,7 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
                     # Notify subscribers
                     manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
                     for sub in manga_subs:
-                        msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_obj.title}*\n\n"
+                        msg = f"🔥 **New Chapter Alert!** 🔥\n\n*{manga_obj.title if manga_obj else manga_id}*\n\n"
                         for nc in new_chapters:
                             msg += f"• {nc['title']}\n"
                         try:

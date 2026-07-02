@@ -149,14 +149,14 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.net', 'aquareader.org', 'wp.com', 'mangadex.org', 'uploads.mangadex.org', 'mangadex.network']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
+        "Referer": "https://aquareader.org/" if 'aquareader' in url else "https://mangadex.org/"
     }
 
     try:
