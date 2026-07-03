@@ -12,7 +12,17 @@ import zipfile
 import io
 import logging
 import requests
+import json
+import redis
 from utils import get_safe_manga_dir
+
+redis_client = None
+if os.environ.get('REDIS_URL'):
+    try:
+        redis_client = redis.from_url(os.environ.get('REDIS_URL'))
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis: {e}")
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +34,24 @@ async def api_search():
     source = request.args.get('source', 'mangadex')
     if not q: return jsonify([])
 
+    cache_key = f"search:{source}:{q}"
+    if redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return Response(cached, mimetype='application/json')
+        except redis.RedisError as e:
+            logger.error(f"Redis get error: {e}")
+
     scraper = get_scraper(source)
     results = await scraper.search_manga(q)
+
+    if redis_client and results:
+        try:
+            redis_client.setex(cache_key, 3600, json.dumps(results)) # Cache for 1 hour
+        except redis.RedisError as e:
+            logger.error(f"Redis set error: {e}")
+
     return jsonify(results)
 
 @api_bp.route('/home')
@@ -49,10 +75,42 @@ def api_home():
         'latest': [serialize(m) for m in latest]
     })
 
+
+@api_bp.route('/manga/recommendations')
+def api_manga_recommendations():
+    # Simple recommendation based on trending/popular for now
+    trending = Manga.query.order_by(Manga.view_count.desc()).limit(15).all()
+
+    def serialize(m):
+        return {
+            'id': m.id,
+            'title': m.title,
+            'cover_url': m.cover_url,
+            'source': m.source,
+            'views': m.view_count
+        }
+
+    return jsonify([serialize(m) for m in trending])
+
 @api_bp.route('/manga/<source>/<path:manga_id>')
+
 async def api_manga_details(source, manga_id):
-    manga = db.session.get(Manga, manga_id)
+    cache_key = f"manga:{source}:{manga_id}"
     force_update = request.args.get('force', 'false').lower() == 'true'
+
+    if redis_client and not force_update:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                manga = db.session.get(Manga, manga_id)
+                if manga:
+                    manga.view_count = (manga.view_count or 0) + 1
+                    db.session.commit()
+                return Response(cached, mimetype='application/json')
+        except redis.RedisError as e:
+            logger.error(f"Redis get error: {e}")
+
+    manga = db.session.get(Manga, manga_id)
 
     if manga:
         manga.view_count = (manga.view_count or 0) + 1
@@ -92,21 +150,43 @@ async def api_manga_details(source, manga_id):
     manga.synopsis = details['synopsis']
     manga.last_updated = datetime.now(timezone.utc)
 
+    existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+    existing_chap_ids = {c.id for c in existing_chapters}
+
+    new_chapters = []
     for chap in details['chapters']:
         chap_id = chap['id']
-        chapter = db.session.get(Chapter, chap_id)
-        if not chapter:
+        if chap_id not in existing_chap_ids:
             num = 0.0
             try:
                 parts = chap['title'].lower().replace('chapter', '').strip().split()
                 if parts: num = float(parts[0].replace('-', '.'))
             except (ValueError, IndexError, AttributeError): pass
-            chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=num)
-            db.session.add(chapter)
+            new_chapters.append(Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=num))
+            existing_chap_ids.add(chap_id)
+
+
+    if new_chapters:
+        db.session.add_all(new_chapters)
 
     db.session.commit()
 
+    # Invalidate cache if new chapters added or force updated
+    if redis_client:
+        try:
+            redis_client.delete(f"manga:{source}:{manga_id}")
+        except redis.RedisError as e:
+            logger.error(f"Redis delete error: {e}")
+
+
     details['chapters'] = [{'id': c['id'].split('/')[-1], 'title': c['title'], 'url': c['url']} for c in details['chapters']]
+
+    if redis_client:
+        try:
+            redis_client.setex(cache_key, 21600, json.dumps(details)) # Cache for 6 hours
+        except redis.RedisError as e:
+            logger.error(f"Redis set error: {e}")
+
     return jsonify(details)
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
@@ -149,14 +229,14 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.org', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
+        "Referer": "https://aquareader.org/" if 'aquareader' in url else "https://mangadex.org/"
     }
 
     try:
