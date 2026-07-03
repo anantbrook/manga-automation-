@@ -159,19 +159,23 @@ async def manga(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
 
 async def popular(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    scraper = get_scraper('mangadex')
     await context.bot.send_message(chat_id=update.effective_chat.id, text="🔥 Fetching popular manga...")
-    results = await scraper.search_manga("leveling") # Dummy term for now until /popular API is implemented
 
-    if not results:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="No popular results found right now.")
-        return
+    from app import create_app
+    app = create_app()
 
-    response = "🌟 **Trending Now:**\n\n"
-    for r in results[:5]:
-        response += f"• *{r['title']}*\n  ID: `{r['id']}`\n\n"
+    with app.app_context():
+        results = Manga.query.order_by(Manga.view_count.desc()).limit(5).all()
 
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
+        if not results:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="No popular results found right now.")
+            return
+
+        response = "🌟 **Trending Now:**\n\n"
+        for r in results:
+            response += f"• *{r.title}* (Views: {r.view_count})\n  ID: `{r.id}`\n\n"
+
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=response, parse_mode='Markdown')
 
 async def latest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(

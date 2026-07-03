@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-url = "https://aquareader.net/?s=solo+leveling&post_type=wp-manga"
+url = "https://aquareader.org/?s=solo+leveling&post_type=wp-manga"
 headers = {"User-Agent": "Mozilla/5.0"}
 r = requests.get(url, headers=headers)
 soup = BeautifulSoup(r.text, 'html.parser')
