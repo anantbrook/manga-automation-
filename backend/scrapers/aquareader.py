@@ -98,6 +98,40 @@ class AquaReaderScraper(MangaScraper):
             'source': 'aquareader'
         }
 
+    async def get_latest_updates(self):
+        # Return empty list in local dev to avoid 403, as specified
+        import os
+        if os.environ.get('FLASK_ENV') != 'production':
+            return []
+
+        # Scrape recent updates from frontpage
+        html = await self._fetch(self.base_url)
+        if not html: return []
+
+        soup = BeautifulSoup(html, 'html.parser')
+        results = []
+        for item in soup.select('.page-item-detail'):
+            title_el = item.select_one('.post-title h3 a')
+            if not title_el: continue
+
+            title = title_el.text.strip()
+            link = title_el['href']
+            slug = link.strip('/').split('/')[-1]
+
+            img_el = item.select_one('img')
+            cover_url = None
+            if img_el:
+                cover_url = img_el.get('data-src') or img_el.get('src')
+
+            results.append({
+                'id': slug,
+                'title': title,
+                'url': link,
+                'cover_url': cover_url,
+                'source': 'aquareader'
+            })
+        return results
+
     async def get_chapter_images(self, manga_id: str, chapter_id: str):
         url = f"{self.base_url}/manga/{manga_id}/{chapter_id}/"
         html = await self._fetch(url)

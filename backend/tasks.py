@@ -3,6 +3,7 @@ from celery import Celery
 import asyncio
 import aiohttp
 import logging
+import redis
 from scrapers import get_scraper
 from utils import get_safe_manga_dir
 
@@ -23,8 +24,40 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-job': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 7200.0, # seconds (2 hours)
+    },
 }
 celery.conf.timezone = 'UTC'
+
+@celery.task
+def fetch_global_latest_updates_job():
+    from app import create_app
+    from models import db, Manga
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_global():
+            for source in ['mangadex', 'aquareader']:
+                scraper = get_scraper(source)
+                try:
+                    updates = await scraper.get_latest_updates()
+                    for m_data in updates:
+                        existing = db.session.get(Manga, m_data['id'])
+                        if not existing:
+                            new_manga = Manga(id=m_data['id'], title=m_data['title'], source=source, cover_url=m_data['cover_url'])
+                            db.session.add(new_manga)
+                        else:
+                            existing.cover_url = m_data.get('cover_url', existing.cover_url)
+                except Exception as e:
+                    logger.exception(f"Failed to fetch global updates for {source}: {e}")
+
+            db.session.commit()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_global())
 
 @celery.task
 def check_manga_updates_job():
@@ -56,14 +89,27 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                existing_chapters = db.session.query(Chapter.id).filter_by(manga_id=manga_id).all()
+                existing_ids = {c[0] for c in existing_chapters}
+
+                added_new = False
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        added_new = True
+                        existing_ids.add(chap_id)
 
-                db.session.commit()
+                if added_new:
+                    db.session.commit()
+                    # Invalidate cache
+                    try:
+                        r = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
+                        r.delete(f"manga:mangadex:{manga_id}")
+                        r.delete(f"manga:aquareader:{manga_id}")
+                    except redis.RedisError:
+                        pass
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

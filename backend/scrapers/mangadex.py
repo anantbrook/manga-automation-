@@ -90,6 +90,34 @@ class MangaDexScraper(MangaScraper):
             'source': 'mangadex'
         }
 
+    async def get_latest_updates(self):
+        url = f"{self.api_url}/manga"
+        # order by updated at descending
+        params = {"order[updatedAt]": "desc", "limit": 20, "includes[]": "cover_art"}
+        data = await self._fetch_json(url, params)
+        if not data or 'data' not in data: return []
+
+        results = []
+        for item in data['data']:
+            title = item['attributes']['title'].get('en') or list(item['attributes']['title'].values())[0] if item['attributes']['title'] else "Unknown Title"
+            manga_id = item['id']
+
+            cover_filename = None
+            for rel in item['relationships']:
+                if rel['type'] == 'cover_art' and 'attributes' in rel:
+                    cover_filename = rel['attributes'].get('fileName')
+
+            cover_url = f"{self.uploads_url}/covers/{manga_id}/{cover_filename}" if cover_filename else None
+
+            results.append({
+                'id': manga_id,
+                'title': title,
+                'url': f"https://mangadex.org/title/{manga_id}",
+                'cover_url': cover_url,
+                'source': 'mangadex'
+            })
+        return results
+
     async def get_chapter_images(self, manga_id: str, chapter_id: str):
         # In mangadex, the chapter_id is actually the MD chapter uuid
         md_chap_id = chapter_id.split('/')[-1] if '/' in chapter_id else chapter_id
