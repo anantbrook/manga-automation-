@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import time
+import redis
 from scrapers import get_scraper
 from models import db, Manga, Subscription, Chapter
 from flask import Flask
@@ -183,34 +184,49 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
     """Background task to check for new chapters."""
     bot = context.bot
     try:
+        unique_manga_ids = []
         with app.app_context():
             # Get all unique subscribed manga IDs
             subs = Subscription.query.all()
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-            scraper = get_scraper('mangadex')
+        scraper = get_scraper('mangadex')
 
-            for manga_id in unique_manga_ids:
+        for manga_id in unique_manga_ids:
+            # Fetch details outside DB session to avoid holding it during await
+            details = await scraper.get_manga_details(manga_id)
+
+            # Sleep to respect rate limit without blocking loop
+            await asyncio.sleep(2)
+
+            if not details:
+                continue
+
+            with app.app_context():
                 manga_obj = db.session.get(Manga, manga_id)
-                details = await scraper.get_manga_details(manga_id)
+                if not manga_obj: continue
 
-                # Sleep to respect rate limit without blocking loop
-                await asyncio.sleep(2)
-
-                if not details:
-                    continue
+                # Fetch existing chapters in bulk
+                existing_chapters = db.session.query(Chapter.id).filter_by(manga_id=manga_id).all()
+                existing_ids = {c[0] for c in existing_chapters}
 
                 # Find new chapters
                 new_chapters = []
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_ids.add(chap['id']) # add to set just in case of dupes
 
                 if new_chapters:
                     db.session.commit()
+                    # Invalidate cache
+                    try:
+                        r = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'))
+                        r.delete(f"manga:mangadex:{manga_id}")
+                    except redis.RedisError:
+                        pass
                     # Notify subscribers
                     manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
                     for sub in manga_subs:
