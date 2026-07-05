@@ -23,6 +23,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 1800.0, # seconds (30 mins)
+    },
 }
 celery.conf.timezone = 'UTC'
 
@@ -37,18 +41,20 @@ def check_manga_updates_job():
     from app import create_app
     from models import db, Subscription, Manga, Chapter
     import time
+    import redis
 
     app = create_app()
     with app.app_context():
+        redis_client = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'), decode_responses=True)
         subs = Subscription.query.all()
         unique_manga_ids = list(set([sub.manga_id for sub in subs]))
-
-        scraper = get_scraper('mangadex')
 
         async def _check_all_updates():
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
                 if not manga_obj: continue
+
+                scraper = get_scraper(manga_obj.source)
 
                 # Re-scraping updates the DB directly
                 details = await scraper.get_manga_details(manga_id)
@@ -56,14 +62,29 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_chapter_ids = {c.id for c in existing_chapters}
+
+                updated = False
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
-                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
+                    if chap_id not in existing_chapter_ids:
+                        num = 0.0
+                        try:
+                            parts = chap['title'].lower().replace('chapter', '').strip().split()
+                            if parts: num = float(parts[0].replace('-', '.'))
+                        except (ValueError, IndexError, AttributeError): pass
+                        chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=num)
                         db.session.add(chapter)
+                        existing_chapter_ids.add(chap_id)
+                        updated = True
 
-                db.session.commit()
+                if updated:
+                    db.session.commit()
+                    try:
+                        redis_client.delete(f"manga:{manga_obj.source}:{manga_id}")
+                    except redis.RedisError:
+                        pass
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -111,3 +132,38 @@ def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str)
 
     loop.run_until_complete(_download_all())
     return {'status': 'success', 'path': base_dir, 'count': len(images)}
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Periodically fetches the latest updates from all scrapers and adds them to the DB.
+    This helps grow the database organically with new chapters and manga.
+    """
+    from app import create_app
+    from models import db, Manga
+    from datetime import datetime, timezone
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_all():
+            sources = ['mangadex', 'aquareader']
+            for source in sources:
+                scraper = get_scraper(source)
+                try:
+                    updates = await scraper.get_latest_updates()
+                    for item in updates:
+                        manga = db.session.get(Manga, item['id'])
+                        if not manga:
+                            manga = Manga(id=item['id'], title=item['title'], source=item['source'])
+                            db.session.add(manga)
+                        manga.cover_url = item['cover_url']
+                        manga.last_updated = datetime.now(timezone.utc)
+                    db.session.commit()
+                except Exception as e:
+                    logger.exception(f"Error fetching global updates for {source}: {e}")
+                finally:
+                    await scraper.close()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_all())
