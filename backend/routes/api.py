@@ -12,11 +12,15 @@ import zipfile
 import io
 import logging
 import requests
+import json
+import redis
 from utils import get_safe_manga_dir
 
 logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+redis_client = redis.Redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'), decode_responses=True)
 
 @api_bp.route('/search')
 async def api_search():
@@ -24,8 +28,22 @@ async def api_search():
     source = request.args.get('source', 'mangadex')
     if not q: return jsonify([])
 
+    cache_key = f"search:{source}:{q}"
+    try:
+        cached = redis_client.get(cache_key)
+        if cached:
+            return jsonify(json.loads(cached))
+    except redis.RedisError as e:
+        logger.error("Redis error on get search cache: %s", e)
+
     scraper = get_scraper(source)
     results = await scraper.search_manga(q)
+
+    try:
+        redis_client.setex(cache_key, 3600, json.dumps(results))
+    except redis.RedisError as e:
+        logger.error("Redis error on set search cache: %s", e)
+
     return jsonify(results)
 
 @api_bp.route('/home')
@@ -51,12 +69,22 @@ def api_home():
 
 @api_bp.route('/manga/<source>/<path:manga_id>')
 async def api_manga_details(source, manga_id):
-    manga = db.session.get(Manga, manga_id)
+    cache_key = f"manga:{source}:{manga_id}"
     force_update = request.args.get('force', 'false').lower() == 'true'
+
+    manga = db.session.get(Manga, manga_id)
 
     if manga:
         manga.view_count = (manga.view_count or 0) + 1
         db.session.commit()
+
+    if not force_update:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.error("Redis error on get manga cache: %s", e)
 
     cache_expired = False
     if manga and manga.last_updated:
@@ -67,16 +95,21 @@ async def api_manga_details(source, manga_id):
             cache_expired = True
 
     if manga and not force_update and manga.synopsis and not cache_expired:
-        chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+        chapters = Chapter.query.filter_by(manga_id=manga_id).order_by(Chapter.number.desc()).all()
         if chapters:
-            return jsonify({
+            result = {
                 'id': manga.id,
                 'title': manga.title,
                 'cover_url': manga.cover_url,
                 'synopsis': manga.synopsis,
                 'source': manga.source,
                 'chapters': [{'id': c.id.split('/')[-1], 'title': c.title, 'url': c.url} for c in chapters]
-            })
+            }
+            try:
+                redis_client.setex(cache_key, 21600, json.dumps(result)) # Cache for 6 hours
+            except redis.RedisError as e:
+                logger.error("Redis error on set manga cache: %s", e)
+            return jsonify(result)
 
     scraper = get_scraper(source)
     details = await scraper.get_manga_details(manga_id)
@@ -92,10 +125,12 @@ async def api_manga_details(source, manga_id):
     manga.synopsis = details['synopsis']
     manga.last_updated = datetime.now(timezone.utc)
 
+    existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+    existing_chapter_ids = {c.id for c in existing_chapters}
+
     for chap in details['chapters']:
         chap_id = chap['id']
-        chapter = db.session.get(Chapter, chap_id)
-        if not chapter:
+        if chap_id not in existing_chapter_ids:
             num = 0.0
             try:
                 parts = chap['title'].lower().replace('chapter', '').strip().split()
@@ -103,10 +138,17 @@ async def api_manga_details(source, manga_id):
             except (ValueError, IndexError, AttributeError): pass
             chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=num)
             db.session.add(chapter)
+            existing_chapter_ids.add(chap_id)
 
     db.session.commit()
 
     details['chapters'] = [{'id': c['id'].split('/')[-1], 'title': c['title'], 'url': c['url']} for c in details['chapters']]
+
+    try:
+        redis_client.setex(cache_key, 21600, json.dumps(details))
+    except redis.RedisError as e:
+        logger.error("Redis error on set manga cache: %s", e)
+
     return jsonify(details)
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
