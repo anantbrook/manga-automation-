@@ -106,3 +106,6 @@ class MangaDexScraper(MangaScraper):
             images.append(f"{base}/data/{hash_val}/{filename}")
 
         return images
+
+    async def get_latest_updates(self) -> list:
+        return []

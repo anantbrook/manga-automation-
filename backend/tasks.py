@@ -56,12 +56,15 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_chapter_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_chapter_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_chapter_ids.add(chap_id)
 
                 db.session.commit()
 
