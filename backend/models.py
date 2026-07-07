@@ -9,8 +9,8 @@ class Manga(db.Model):
     title = db.Column(db.String(255), nullable=False)
     cover_url = db.Column(db.String(512))
     synopsis = db.Column(db.Text)
-    last_updated = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    view_count = db.Column(db.Integer, default=0)
+    last_updated = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    view_count = db.Column(db.Integer, default=0, index=True)
 
     # Allow composite ID+source if needed, but for now ID is usually unique per source
 
