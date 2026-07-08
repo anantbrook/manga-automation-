@@ -23,6 +23,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates-job': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 1800.0, # 30 mins
+    }
 }
 celery.conf.timezone = 'UTC'
 
@@ -68,6 +72,41 @@ def check_manga_updates_job():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_check_all_updates())
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Background job to fetch global latest updates to organically grow the database.
+    """
+    from app import create_app
+    from models import db, Manga
+    import time
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_updates():
+            scrapers = ['mangadex', 'aquareader']
+            for source in scrapers:
+                try:
+                    scraper = get_scraper(source)
+                    updates = await scraper.get_latest_updates()
+                    for m in updates:
+                        existing = db.session.get(Manga, m['id'])
+                        if not existing:
+                            manga = Manga(
+                                id=m['id'],
+                                source=m['source'],
+                                title=m['title'],
+                                cover_url=m['cover_url']
+                            )
+                            db.session.add(manga)
+                    db.session.commit()
+                except Exception as e:
+                    logger.exception(f"Error fetching global updates for {source}: {e}")
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_updates())
 
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):

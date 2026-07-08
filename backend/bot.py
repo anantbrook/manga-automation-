@@ -6,18 +6,12 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import time
 from scrapers import get_scraper
 from models import db, Manga, Subscription, Chapter
-from flask import Flask
+from app import create_app
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
-# Create a minimal app context for the bot to interact with the database
-app = Flask(__name__)
-# Read the same DATABASE_URL as app.py (Postgres via Docker, or sqlite locally)
-db_url = os.environ.get('DATABASE_URL', 'sqlite:///manga.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
+app = create_app()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_msg = (

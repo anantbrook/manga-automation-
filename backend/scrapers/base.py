@@ -36,3 +36,8 @@ class MangaScraper(ABC):
     @abstractmethod
     async def get_chapter_images(self, manga_id: str, chapter_id: str) -> list:
         pass
+
+    @abstractmethod
+    async def get_latest_updates(self):
+        """Fetch latest updated manga to organically grow the database."""
+        pass
