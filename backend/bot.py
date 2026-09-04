@@ -1,6 +1,6 @@
 import os
 import asyncio
-from dotenv import load_dotenv
+from dotenv import load_dotenv; load_dotenv()
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import time
@@ -53,11 +53,22 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.session.add(manga)
 
             # Add chapters so we know the baseline
+            chap_ids = [c['id'] for c in details['chapters']]
+            existing_ids = set()
+            for i in range(0, len(chap_ids), 500):
+                chunk = chap_ids[i:i + 500]
+                existing_chaps = Chapter.query.filter(Chapter.id.in_(chunk)).with_entities(Chapter.id).all()
+                existing_ids.update([c[0] for c in existing_chaps])
+
             for chap in details['chapters']:
-                chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                db.session.add(chapter)
+                if chap['id'] not in existing_ids:
+                    chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    db.session.add(chapter)
+                    existing_ids.add(chap['id'])
 
             db.session.commit()
+            from utils import invalidate_manga_cache
+            invalidate_manga_cache(manga.source, manga_id)
 
         # Check if already subscribed
         sub = Subscription.query.filter_by(chat_id=chat_id, manga_id=manga_id).first()
@@ -202,15 +213,24 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+                chap_ids = [c['id'] for c in details['chapters']]
+                existing_ids = set()
+                for i in range(0, len(chap_ids), 500):
+                    chunk = chap_ids[i:i + 500]
+                    existing_chaps = Chapter.query.filter(Chapter.id.in_(chunk)).with_entities(Chapter.id).all()
+                    existing_ids.update([c[0] for c in existing_chaps])
+
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_ids.add(chap['id'])
 
                 if new_chapters:
                     db.session.commit()
+                    from utils import invalidate_manga_cache
+                    invalidate_manga_cache(manga_obj.source, manga_id)
                     # Notify subscribers
                     manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
                     for sub in manga_subs:
