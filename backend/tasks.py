@@ -56,14 +56,26 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                chap_ids = [c['id'] for c in details['chapters']]
+                existing_ids = set()
+                for i in range(0, len(chap_ids), 500):
+                    chunk = chap_ids[i:i + 500]
+                    existing_chaps = Chapter.query.filter(Chapter.id.in_(chunk)).with_entities(Chapter.id).all()
+                    existing_ids.update([c[0] for c in existing_chaps])
+
+                has_new = False
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_ids.add(chap_id)
+                        has_new = True
 
                 db.session.commit()
+                if has_new:
+                    from utils import invalidate_manga_cache
+                    invalidate_manga_cache(manga_obj.source, manga_id)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

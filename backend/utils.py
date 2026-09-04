@@ -1,5 +1,24 @@
 import os
+import redis
+import logging
 from werkzeug.utils import secure_filename
+
+logger = logging.getLogger(__name__)
+
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+try:
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+except Exception as e:
+    logger.exception("Failed to initialize Redis client")
+    redis_client = None
+
+def invalidate_manga_cache(source, manga_id):
+    if not redis_client:
+        return
+    try:
+        redis_client.delete(f"manga:{source}:{manga_id}")
+    except redis.RedisError:
+        logger.exception(f"Failed to invalidate cache for manga:{source}:{manga_id}")
 
 def get_safe_manga_dir(base_dir, source, manga_id, chapter_slug=None):
     """
