@@ -43,6 +43,7 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Make sure manga exists in DB or fetch it
         manga = db.session.get(Manga, manga_id)
         if not manga:
+
             scraper = get_scraper('mangadex')
             # The bot is already running in an asyncio event loop, so we can just await
             details = await scraper.get_manga_details(manga_id)
@@ -53,9 +54,13 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.session.add(manga)
 
             # Add chapters so we know the baseline
+            existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+            existing_set = {c.id for c in existing_chapters}
             for chap in details['chapters']:
-                chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                db.session.add(chapter)
+                if chap['id'] not in existing_set:
+                    chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    db.session.add(chapter)
+                    existing_set.add(chap['id'])
 
             db.session.commit()
 
@@ -188,10 +193,12 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
             subs = Subscription.query.all()
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-            scraper = get_scraper('mangadex')
+
 
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
+                if not manga_obj: continue
+                scraper = get_scraper(manga_obj.source)
                 details = await scraper.get_manga_details(manga_id)
 
                 # Sleep to respect rate limit without blocking loop
@@ -202,12 +209,14 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_set = {c.id for c in existing_chapters}
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_set:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_set.add(chap['id'])
 
                 if new_chapters:
                     db.session.commit()
