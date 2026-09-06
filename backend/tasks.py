@@ -43,25 +43,26 @@ def check_manga_updates_job():
         subs = Subscription.query.all()
         unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-        scraper = get_scraper('mangadex')
-
         async def _check_all_updates():
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
                 if not manga_obj: continue
 
+                scraper = get_scraper(manga_obj.source)
                 # Re-scraping updates the DB directly
                 details = await scraper.get_manga_details(manga_id)
                 await asyncio.sleep(2) # Non-blocking sleep
 
                 if not details: continue
 
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_set = {c.id for c in existing_chapters}
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_set:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_set.add(chap_id)
 
                 db.session.commit()
 

@@ -300,7 +300,10 @@ def handle_bookmarks(current_user):
             return jsonify([])
 
         manga_ids = [b.manga_id for b in bookmarks]
-        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+        mangas = []
+        for i in range(0, len(manga_ids), 500):
+            chunk = manga_ids[i:i + 500]
+            mangas.extend(Manga.query.filter(Manga.id.in_(chunk)).all())
         manga_dict = {m.id: m for m in mangas}
 
         result = []
@@ -344,7 +347,10 @@ def handle_history(current_user):
             return jsonify([])
 
         manga_ids = [h.manga_id for h in history]
-        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+        mangas = []
+        for i in range(0, len(manga_ids), 500):
+            chunk = manga_ids[i:i + 500]
+            mangas.extend(Manga.query.filter(Manga.id.in_(chunk)).all())
         manga_dict = {m.id: m for m in mangas}
 
         result = []
