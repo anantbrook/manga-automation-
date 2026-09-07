@@ -39,18 +39,29 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     manga_id = context.args[0]
     chat_id = str(update.effective_chat.id)
 
+    details = None
+    manga_title = None
+
     with app.app_context():
-        # Make sure manga exists in DB or fetch it
+        # Check if manga exists in DB
         manga = db.session.get(Manga, manga_id)
-        if not manga:
-            scraper = get_scraper('mangadex')
-            # The bot is already running in an asyncio event loop, so we can just await
-            details = await scraper.get_manga_details(manga_id)
-            if not details:
-                await context.bot.send_message(chat_id=chat_id, text="Manga not found.")
-                return
+        if manga:
+            manga_title = manga.title
+
+    if not manga_title:
+        # Fetch details outside DB session
+        scraper = get_scraper('mangadex')
+        details = await scraper.get_manga_details(manga_id)
+
+        if not details:
+            await context.bot.send_message(chat_id=chat_id, text="Manga not found.")
+            return
+
+    with app.app_context():
+        if details:
             manga = Manga(id=details['id'], title=details['title'], cover_url=details['cover_url'])
             db.session.add(manga)
+            manga_title = details['title']
 
             # Add chapters so we know the baseline
             for chap in details['chapters']:
@@ -62,14 +73,14 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Check if already subscribed
         sub = Subscription.query.filter_by(chat_id=chat_id, manga_id=manga_id).first()
         if sub:
-            await context.bot.send_message(chat_id=chat_id, text=f"You are already subscribed to {manga.title}.")
+            await context.bot.send_message(chat_id=chat_id, text=f"You are already subscribed to {manga_title}.")
             return
 
         new_sub = Subscription(chat_id=chat_id, manga_id=manga_id)
         db.session.add(new_sub)
         db.session.commit()
 
-    await context.bot.send_message(chat_id=chat_id, text=f"✅ Successfully subscribed to updates for '{manga.title}'!")
+    await context.bot.send_message(chat_id=chat_id, text=f"✅ Successfully subscribed to updates for '{manga_title}'!")
 
 async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -183,22 +194,33 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
     """Background task to check for new chapters."""
     bot = context.bot
     try:
+        unique_manga_ids = []
+        manga_sources = {}
+
         with app.app_context():
             # Get all unique subscribed manga IDs
             subs = Subscription.query.all()
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-            scraper = get_scraper('mangadex')
+            for m_id in unique_manga_ids:
+                m_obj = db.session.get(Manga, m_id)
+                if m_obj:
+                    manga_sources[m_id] = m_obj.source
 
-            for manga_id in unique_manga_ids:
+        for manga_id in unique_manga_ids:
+            source = manga_sources.get(manga_id, 'mangadex')
+            scraper = get_scraper(source)
+            details = await scraper.get_manga_details(manga_id)
+
+            # Sleep to respect rate limit without blocking loop
+            await asyncio.sleep(2)
+
+            if not details:
+                continue
+
+            with app.app_context():
                 manga_obj = db.session.get(Manga, manga_id)
-                details = await scraper.get_manga_details(manga_id)
-
-                # Sleep to respect rate limit without blocking loop
-                await asyncio.sleep(2)
-
-                if not details:
-                    continue
+                if not manga_obj: continue
 
                 # Find new chapters
                 new_chapters = []
