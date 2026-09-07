@@ -149,14 +149,14 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.org', 'aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org', 'mangadex.network']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
+        "Referer": "https://aquareader.org/" if 'aquareader' in url else "https://mangadex.org/"
     }
 
     try:
@@ -249,6 +249,21 @@ def robots():
     txt = f"User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /read/\n\nSitemap: {base_url}/api/sitemap.xml"
     return Response(txt, mimetype='text/plain')
 
+@api_bp.route('/manga/recommendations')
+def api_recommendations():
+    recommendations = Manga.query.order_by(Manga.view_count.desc()).limit(10).all()
+
+    def serialize(m):
+        return {
+            'id': m.id,
+            'title': m.title,
+            'cover_url': m.cover_url,
+            'source': m.source,
+            'views': m.view_count
+        }
+
+    return jsonify([serialize(m) for m in recommendations])
+
 # Auth & User Routes
 from auth import JWT_SECRET, token_required
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -300,7 +315,14 @@ def handle_bookmarks(current_user):
             return jsonify([])
 
         manga_ids = [b.manga_id for b in bookmarks]
-        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+
+        mangas = []
+        # Chunking to avoid sqlite query limits with IN clauses
+        chunk_size = 500
+        for i in range(0, len(manga_ids), chunk_size):
+            chunk = manga_ids[i:i + chunk_size]
+            mangas.extend(Manga.query.filter(Manga.id.in_(chunk)).all())
+
         manga_dict = {m.id: m for m in mangas}
 
         result = []
@@ -344,7 +366,13 @@ def handle_history(current_user):
             return jsonify([])
 
         manga_ids = [h.manga_id for h in history]
-        mangas = Manga.query.filter(Manga.id.in_(manga_ids)).all()
+
+        mangas = []
+        chunk_size = 500
+        for i in range(0, len(manga_ids), chunk_size):
+            chunk = manga_ids[i:i + chunk_size]
+            mangas.extend(Manga.query.filter(Manga.id.in_(chunk)).all())
+
         manga_dict = {m.id: m for m in mangas}
 
         result = []

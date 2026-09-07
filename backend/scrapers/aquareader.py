@@ -9,9 +9,9 @@ class AquaReaderScraper(MangaScraper):
         super().__init__()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Referer": "https://aquareader.net/"
+            "Referer": "https://aquareader.org/"
         }
-        self.base_url = "https://aquareader.net"
+        self.base_url = "https://aquareader.org"
 
     async def _fetch(self, url, is_json=False):
         session = await self.get_session()
@@ -97,6 +97,11 @@ class AquaReaderScraper(MangaScraper):
             'chapters': chapters,
             'source': 'aquareader'
         }
+
+    async def get_latest_updates(self) -> list:
+        # Currently returns 403 in local dev, returning [] to not break celery locally
+        # Should be implemented properly for production
+        return []
 
     async def get_chapter_images(self, manga_id: str, chapter_id: str):
         url = f"{self.base_url}/manga/{manga_id}/{chapter_id}/"

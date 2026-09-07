@@ -13,6 +13,7 @@ def create_app():
     db_url = os.environ.get('DATABASE_URL', 'sqlite:///manga.db')
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_secret_key_for_flash')
 
     db.init_app(app)
 

@@ -90,6 +90,10 @@ class MangaDexScraper(MangaScraper):
             'source': 'mangadex'
         }
 
+    async def get_latest_updates(self) -> list:
+        # Dummy implementation to satisfy abstract base class for now
+        return []
+
     async def get_chapter_images(self, manga_id: str, chapter_id: str):
         # In mangadex, the chapter_id is actually the MD chapter uuid
         md_chap_id = chapter_id.split('/')[-1] if '/' in chapter_id else chapter_id
