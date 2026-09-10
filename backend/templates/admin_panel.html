@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MangaFire PRO Admin Panel</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #333; color: white; font-weight: normal; }
+        tr:hover { background-color: #f9f9f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input, select, button { padding: 10px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-danger { background: #e74c3c; color: white; border: none; cursor: pointer; }
+        .btn-primary { background: #ff3300; color: white; border: none; cursor: pointer; }
+        .flash-messages { margin-bottom: 20px; }
+        .alert { padding: 15px; border-radius: 4px; margin-bottom: 10px; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔥 MangaFire PRO Admin</h1>
+            <form action="{{ url_for('admin.admin_logout') }}" method="post" style="margin: 0;">
+                <button type="submit">Logout</button>
+            </form>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category if category != 'message' else 'success' }}">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="card">
+            <h3>Add Manga (Trigger Celery Job)</h3>
+            <form action="{{ url_for('admin.admin_add') }}" method="post" style="display: flex; align-items: center;">
+                <select name="source">
+                    <option value="mangadex">MangaDex</option>
+                    <option value="aquareader">AquaReader</option>
+                </select>
+                <input type="text" name="manga_id" placeholder="Enter Manga ID/Slug" required style="width: 300px; margin-bottom: 0;">
+                <button type="submit" class="btn-primary">Fetch & Cache Everything</button>
+            </form>
+        </div>
+
+        <div class="card" style="display: flex; gap: 40px;">
+            <p style="margin: 0;">Total Cached Manga: <b style="font-size: 1.2em;">{{ mangas|length }}</b></p>
+            <p style="margin: 0;">Total Cached Chapters: <b style="font-size: 1.2em;">{{ chapter_count }}</b></p>
+        </div>
+
+        <h2>Cached Manga Database</h2>
+        <table>
+            <tr><th>Source</th><th>ID</th><th>Title</th><th>Last Updated</th><th>Action</th></tr>
+            {% for m in mangas %}
+            <tr>
+                <td>{{ m.source }}</td>
+                <td>{{ m.id }}</td>
+                <td>{{ m.title }}</td>
+                <td>{{ m.last_updated }}</td>
+                <td>
+                    <form action="{{ url_for('admin.admin_delete', manga_id=m.id) }}" method="post" style="margin: 0;">
+                        <button type="submit" class="btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center;">No cached manga found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</body>
+</html>
