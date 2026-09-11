@@ -106,3 +106,26 @@ class MangaDexScraper(MangaScraper):
             images.append(f"{base}/data/{hash_val}/{filename}")
 
         return images
+
+    async def get_latest_updates(self) -> list:
+        url = f"{self.api_url}/manga"
+        params = {
+            "includes[]": "cover_art",
+            "limit": 20,
+            "order[latestUploadedChapter]": "desc",
+            "hasAvailableChapters": "true",
+            "availableTranslatedLanguage[]": ["en"]
+        }
+        data = await self._fetch_json(url, params)
+        if not data or 'data' not in data: return []
+
+        results = []
+        for item in data['data']:
+            title = item['attributes']['title'].get('en') or list(item['attributes']['title'].values())[0]
+            manga_id = item['id']
+            results.append({
+                'id': manga_id,
+                'title': title,
+                'source': 'mangadex'
+            })
+        return results

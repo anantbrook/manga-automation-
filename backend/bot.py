@@ -7,9 +7,16 @@ import time
 from scrapers import get_scraper
 from models import db, Manga, Subscription, Chapter
 from flask import Flask
+import redis
 
 load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+try:
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+except Exception:
+    redis_client = None
 
 # Create a minimal app context for the bot to interact with the database
 app = Flask(__name__)
@@ -43,6 +50,7 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Make sure manga exists in DB or fetch it
         manga = db.session.get(Manga, manga_id)
         if not manga:
+            # We don't have source provided in subscribe command, default to mangadex
             scraper = get_scraper('mangadex')
             # The bot is already running in an asyncio event loop, so we can just await
             details = await scraper.get_manga_details(manga_id)
@@ -53,9 +61,13 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
             db.session.add(manga)
 
             # Add chapters so we know the baseline
+            # Optimize chapter insertion by avoiding N+1
+            existing_chapter_ids = {c.id for c in Chapter.query.filter_by(manga_id=manga_id).all()}
             for chap in details['chapters']:
-                chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
-                db.session.add(chapter)
+                if chap['id'] not in existing_chapter_ids:
+                    chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
+                    db.session.add(chapter)
+                    existing_chapter_ids.add(chap['id'])
 
             db.session.commit()
 
@@ -188,10 +200,12 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
             subs = Subscription.query.all()
             unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-            scraper = get_scraper('mangadex')
-
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
+                if not manga_obj:
+                    continue
+
+                scraper = get_scraper(manga_obj.source)
                 details = await scraper.get_manga_details(manga_id)
 
                 # Sleep to respect rate limit without blocking loop
@@ -202,15 +216,24 @@ async def check_updates_job(context: ContextTypes.DEFAULT_TYPE):
 
                 # Find new chapters
                 new_chapters = []
+                # Optimize by fetching all existing chapters
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_ids = {c.id for c in existing_chapters}
+
                 for chap in details['chapters']:
-                    existing = db.session.get(Chapter, chap['id'])
-                    if not existing:
+                    if chap['id'] not in existing_ids:
                         chapter = Chapter(id=chap['id'], manga_id=manga_id, title=chap['title'], url=chap['url'])
                         db.session.add(chapter)
                         new_chapters.append(chap)
+                        existing_ids.add(chap['id'])
 
                 if new_chapters:
                     db.session.commit()
+                    if redis_client:
+                        try:
+                            redis_client.delete(f"manga:{manga_obj.source}:{manga_id}")
+                        except redis.RedisError as e:
+                            print(f"Redis error clearing cache for {manga_id}: {e}")
                     # Notify subscribers
                     manga_subs = Subscription.query.filter_by(manga_id=manga_id).all()
                     for sub in manga_subs:

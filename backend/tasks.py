@@ -5,11 +5,18 @@ import aiohttp
 import logging
 from scrapers import get_scraper
 from utils import get_safe_manga_dir
+import redis
 
 logger = logging.getLogger(__name__)
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+
+try:
+    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+except Exception:
+    redis_client = None
 
 celery = Celery(
     'tasks',
@@ -23,6 +30,10 @@ celery.conf.beat_schedule = {
         'task': 'tasks.check_manga_updates_job',
         'schedule': 3600.0, # seconds (1 hour)
     },
+    'fetch-global-latest-updates': {
+        'task': 'tasks.fetch_global_latest_updates_job',
+        'schedule': 7200.0, # seconds (2 hours)
+    }
 }
 celery.conf.timezone = 'UTC'
 
@@ -43,12 +54,12 @@ def check_manga_updates_job():
         subs = Subscription.query.all()
         unique_manga_ids = list(set([sub.manga_id for sub in subs]))
 
-        scraper = get_scraper('mangadex')
-
         async def _check_all_updates():
             for manga_id in unique_manga_ids:
                 manga_obj = db.session.get(Manga, manga_id)
                 if not manga_obj: continue
+
+                scraper = get_scraper(manga_obj.source)
 
                 # Re-scraping updates the DB directly
                 details = await scraper.get_manga_details(manga_id)
@@ -56,18 +67,58 @@ def check_manga_updates_job():
 
                 if not details: continue
 
+                existing_chapters = Chapter.query.filter_by(manga_id=manga_id).all()
+                existing_ids = {c.id for c in existing_chapters}
+
+                new_chapters = False
                 for chap in details['chapters']:
                     chap_id = chap['id']
-                    existing = db.session.get(Chapter, chap_id)
-                    if not existing:
+                    if chap_id not in existing_ids:
                         chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=0)
                         db.session.add(chapter)
+                        existing_ids.add(chap_id)
+                        new_chapters = True
 
-                db.session.commit()
+                if new_chapters:
+                    db.session.commit()
+                    if redis_client:
+                        try:
+                            redis_client.delete(f"manga:{manga_obj.source}:{manga_id}")
+                        except redis.RedisError as e:
+                            logger.error(f"Redis error clearing cache for {manga_id}: {e}")
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(_check_all_updates())
+
+@celery.task
+def fetch_global_latest_updates_job():
+    """
+    Crawls for new manga from all scrapers using get_latest_updates.
+    """
+    from app import create_app
+    from models import db, Manga
+    from scrapers import scrapers
+
+    app = create_app()
+    with app.app_context():
+        async def _fetch_updates():
+            for source, scraper in scrapers.items():
+                try:
+                    updates = await scraper.get_latest_updates()
+                    for item in updates:
+                        manga = db.session.get(Manga, item['id'])
+                        if not manga:
+                            # We just add a stub, details will be fetched on demand
+                            new_manga = Manga(id=item['id'], title=item['title'], source=item['source'])
+                            db.session.add(new_manga)
+                except Exception as e:
+                    logger.error(f"Error fetching global updates for {source}: {e}")
+            db.session.commit()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_fetch_updates())
 
 @celery.task
 def download_chapter_images_local(source: str, manga_id: str, chapter_slug: str):
