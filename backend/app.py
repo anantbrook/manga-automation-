@@ -7,6 +7,7 @@ from models import db
 
 def create_app():
     app = Flask(__name__, static_folder='static', static_url_path='/static')
+    app.secret_key = os.environ.get('SECRET_KEY', 'default_dev_key')
     CORS(app)
 
     # Use Postgres in Docker, fallback to SQLite locally

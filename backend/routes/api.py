@@ -12,11 +12,20 @@ import zipfile
 import io
 import logging
 import requests
+import json
+import redis
 from utils import get_safe_manga_dir
 
 logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+try:
+    redis_client = redis.from_url(redis_url, decode_responses=True)
+except redis.RedisError as e:
+    logger.error("Failed to connect to Redis: %s", e)
+    redis_client = None
 
 @api_bp.route('/search')
 async def api_search():
@@ -24,8 +33,24 @@ async def api_search():
     source = request.args.get('source', 'mangadex')
     if not q: return jsonify([])
 
+    cache_key = f"search:{source}:{q}"
+    if redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.error("Redis get error for %s: %s", cache_key, e)
+
     scraper = get_scraper(source)
     results = await scraper.search_manga(q)
+
+    if redis_client and results:
+        try:
+            redis_client.setex(cache_key, 3600, json.dumps(results))
+        except redis.RedisError as e:
+            logger.error("Redis set error for %s: %s", cache_key, e)
+
     return jsonify(results)
 
 @api_bp.route('/home')
@@ -51,8 +76,23 @@ def api_home():
 
 @api_bp.route('/manga/<source>/<path:manga_id>')
 async def api_manga_details(source, manga_id):
-    manga = db.session.get(Manga, manga_id)
     force_update = request.args.get('force', 'false').lower() == 'true'
+    cache_key = f"manga:{source}:{manga_id}"
+
+    if not force_update and redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                # Update view count asynchronously if possible, or just quickly here
+                manga = db.session.get(Manga, manga_id)
+                if manga:
+                    manga.view_count = (manga.view_count or 0) + 1
+                    db.session.commit()
+                return jsonify(json.loads(cached))
+        except redis.RedisError as e:
+            logger.error("Redis get error for %s: %s", cache_key, e)
+
+    manga = db.session.get(Manga, manga_id)
 
     if manga:
         manga.view_count = (manga.view_count or 0) + 1
@@ -92,10 +132,12 @@ async def api_manga_details(source, manga_id):
     manga.synopsis = details['synopsis']
     manga.last_updated = datetime.now(timezone.utc)
 
+    # Bulk fetch existing chapters to avoid N+1 queries
+    existing_chapters = {c.id for c in Chapter.query.filter_by(manga_id=manga_id).all()}
+
     for chap in details['chapters']:
         chap_id = chap['id']
-        chapter = db.session.get(Chapter, chap_id)
-        if not chapter:
+        if chap_id not in existing_chapters:
             num = 0.0
             try:
                 parts = chap['title'].lower().replace('chapter', '').strip().split()
@@ -103,10 +145,18 @@ async def api_manga_details(source, manga_id):
             except (ValueError, IndexError, AttributeError): pass
             chapter = Chapter(id=chap_id, manga_id=manga_id, title=chap['title'], url=chap['url'], number=num)
             db.session.add(chapter)
+            existing_chapters.add(chap_id) # prevent duplicate inserts within the same loop
 
     db.session.commit()
 
     details['chapters'] = [{'id': c['id'].split('/')[-1], 'title': c['title'], 'url': c['url']} for c in details['chapters']]
+
+    if redis_client and details:
+        try:
+            redis_client.setex(cache_key, 3600, json.dumps(details))
+        except redis.RedisError as e:
+            logger.error("Redis set error for %s: %s", cache_key, e)
+
     return jsonify(details)
 
 @api_bp.route('/chapter/<source>/<path:manga_id>/<chapter_slug>')
@@ -149,14 +199,14 @@ def proxy_image():
     except socket.gaierror:
         return "Invalid URL: Cannot resolve host", 400
 
-    allowed_domains = ['aquareader.net', 'wp.com', 'mangadex.org', 'uploads.mangadex.org']
+    allowed_domains = ['aquareader.org', 'wp.com', 'mangadex.org', 'uploads.mangadex.org', 'mangadex.network']
     # Secure external image proxy URLs with strict domain validation
     if not any(hostname == domain or hostname.endswith('.' + domain) for domain in allowed_domains):
         return "Domain not allowed", 403
 
     headers = {
         "User-Agent": "Mozilla/5.0",
-        "Referer": "https://aquareader.net/" if 'aquareader' in url else "https://mangadex.org/"
+        "Referer": "https://aquareader.org/" if 'aquareader' in url else "https://mangadex.org/"
     }
 
     try:
