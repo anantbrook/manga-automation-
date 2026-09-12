@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MangaFire PRO Admin Login</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; padding: 50px; text-align: center; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: inline-block; }
+        input, button { padding: 10px; margin: 10px 0; width: 100%; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #ff3300; color: white; border: none; cursor: pointer; }
+        .flash { padding: 10px; margin-bottom: 20px; border-radius: 4px; background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Admin Login</h2>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="flash">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        <form method="post" action="{{ url_for('admin.admin_login_post') }}">
+            <input type="password" name="token" placeholder="Enter Admin Token" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>
